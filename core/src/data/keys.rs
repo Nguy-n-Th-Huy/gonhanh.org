@@ -88,3 +88,8 @@ pub fn is_letter(key: u16) -> bool {
         N | O | P | Q | R | S | T | U | V | W | X | Y | Z
     )
 }
+
+/// Check if key is a consonant
+pub fn is_consonant(key: u16) -> bool {
+    is_letter(key) && !is_vowel(key)
+}

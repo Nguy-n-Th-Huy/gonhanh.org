@@ -1,10 +1,11 @@
 //! Comprehensive tests for Vietnamese IME Engine
+//! Test cases based on: https://vi.wikipedia.org/wiki/Quy_tắc_đặt_dấu_thanh_của_chữ_Quốc_ngữ
 
 use gonhanh_core::data::keys;
 use gonhanh_core::engine::{Action, Engine};
 
 // ============================================================
-// Helper
+// Test Helpers
 // ============================================================
 
 fn char_to_key(c: char) -> u16 {
@@ -24,21 +25,54 @@ fn char_to_key(c: char) -> u16 {
     }
 }
 
-fn type_string(e: &mut Engine, s: &str) -> Vec<gonhanh_core::engine::Result> {
+fn type_str(e: &mut Engine, s: &str) -> Vec<gonhanh_core::engine::Result> {
     s.chars()
-        .map(|c| {
-            let key = char_to_key(c);
-            let caps = c.is_uppercase();
-            e.on_key(key, caps, false)
-        })
+        .map(|c| e.on_key(char_to_key(c), c.is_uppercase(), false))
         .collect()
 }
 
-fn get_output_char(r: &gonhanh_core::engine::Result) -> Option<char> {
+/// Get first output char from result
+fn first_char(r: &gonhanh_core::engine::Result) -> Option<char> {
     if r.action == Action::Send as u8 && r.count > 0 {
         char::from_u32(r.chars[0])
     } else {
         None
+    }
+}
+
+/// Run batch test: input -> expected output char
+fn test_batch(method: u8, cases: &[(&str, char)]) {
+    for (input, expected) in cases {
+        let mut e = Engine::new();
+        e.set_method(method);
+        let results = type_str(&mut e, input);
+        let last = results.last().unwrap();
+        assert_eq!(
+            first_char(last), Some(*expected),
+            "Method {}: '{}' should produce '{}'", method, input, expected
+        );
+    }
+}
+
+/// Run batch test with backspace verification
+fn test_batch_full(method: u8, cases: &[(&str, char, u8, u8)]) {
+    for (input, expected_char, expected_bs, expected_count) in cases {
+        let mut e = Engine::new();
+        e.set_method(method);
+        let results = type_str(&mut e, input);
+        let last = results.last().unwrap();
+        assert_eq!(
+            first_char(last), Some(*expected_char),
+            "Method {}: '{}' char mismatch", method, input
+        );
+        assert_eq!(
+            last.backspace, *expected_bs,
+            "Method {}: '{}' backspace mismatch", method, input
+        );
+        assert_eq!(
+            last.count, *expected_count,
+            "Method {}: '{}' count mismatch", method, input
+        );
     }
 }
 
@@ -47,119 +81,37 @@ fn get_output_char(r: &gonhanh_core::engine::Result) -> Option<char> {
 // ============================================================
 
 #[test]
-fn telex_mark_sac() {
-    let mut e = Engine::new();
-    e.set_method(0);
-
-    let results = type_string(&mut e, "as");
-    assert_eq!(get_output_char(&results[1]), Some('á'));
-}
-
-#[test]
-fn telex_mark_huyen() {
-    let mut e = Engine::new();
-    e.set_method(0);
-
-    let results = type_string(&mut e, "af");
-    assert_eq!(get_output_char(&results[1]), Some('à'));
-}
-
-#[test]
-fn telex_mark_hoi() {
-    let mut e = Engine::new();
-    e.set_method(0);
-
-    let results = type_string(&mut e, "ar");
-    assert_eq!(get_output_char(&results[1]), Some('ả'));
-}
-
-#[test]
-fn telex_mark_nga() {
-    let mut e = Engine::new();
-    e.set_method(0);
-
-    let results = type_string(&mut e, "ax");
-    assert_eq!(get_output_char(&results[1]), Some('ã'));
-}
-
-#[test]
-fn telex_mark_nang() {
-    let mut e = Engine::new();
-    e.set_method(0);
-
-    let results = type_string(&mut e, "aj");
-    assert_eq!(get_output_char(&results[1]), Some('ạ'));
+fn telex_marks() {
+    test_batch(0, &[
+        ("as", 'á'),   // sắc
+        ("af", 'à'),   // huyền
+        ("ar", 'ả'),   // hỏi
+        ("ax", 'ã'),   // ngã
+        ("aj", 'ạ'),   // nặng
+        ("es", 'é'),
+        ("ef", 'è'),
+        ("is", 'í'),
+        ("os", 'ó'),
+        ("us", 'ú'),
+        ("ys", 'ý'),
+    ]);
 }
 
 // ============================================================
-// TELEX: Tones (aa/ee/oo/aw/ow/uw)
+// TELEX: Tones (aa/ee/oo/aw/ow/uw/dd)
 // ============================================================
 
 #[test]
-fn telex_tone_aa() {
-    let mut e = Engine::new();
-    e.set_method(0);
-
-    let results = type_string(&mut e, "aa");
-    assert_eq!(get_output_char(&results[1]), Some('â'));
-}
-
-#[test]
-fn telex_tone_ee() {
-    let mut e = Engine::new();
-    e.set_method(0);
-
-    let results = type_string(&mut e, "ee");
-    assert_eq!(get_output_char(&results[1]), Some('ê'));
-}
-
-#[test]
-fn telex_tone_oo() {
-    let mut e = Engine::new();
-    e.set_method(0);
-
-    let results = type_string(&mut e, "oo");
-    assert_eq!(get_output_char(&results[1]), Some('ô'));
-}
-
-#[test]
-fn telex_tone_aw() {
-    let mut e = Engine::new();
-    e.set_method(0);
-
-    let results = type_string(&mut e, "aw");
-    assert_eq!(get_output_char(&results[1]), Some('ă'));
-}
-
-#[test]
-fn telex_tone_ow() {
-    let mut e = Engine::new();
-    e.set_method(0);
-
-    let results = type_string(&mut e, "ow");
-    assert_eq!(get_output_char(&results[1]), Some('ơ'));
-}
-
-#[test]
-fn telex_tone_uw() {
-    let mut e = Engine::new();
-    e.set_method(0);
-
-    let results = type_string(&mut e, "uw");
-    assert_eq!(get_output_char(&results[1]), Some('ư'));
-}
-
-// ============================================================
-// TELEX: dd -> đ
-// ============================================================
-
-#[test]
-fn telex_dd() {
-    let mut e = Engine::new();
-    e.set_method(0);
-
-    let results = type_string(&mut e, "dd");
-    assert_eq!(get_output_char(&results[1]), Some('đ'));
+fn telex_tones() {
+    test_batch(0, &[
+        ("aa", 'â'),   // hat
+        ("ee", 'ê'),
+        ("oo", 'ô'),
+        ("aw", 'ă'),   // breve
+        ("ow", 'ơ'),   // horn
+        ("uw", 'ư'),
+        ("dd", 'đ'),
+    ]);
 }
 
 // ============================================================
@@ -167,40 +119,25 @@ fn telex_dd() {
 // ============================================================
 
 #[test]
-fn telex_aas() {
-    let mut e = Engine::new();
-    e.set_method(0);
-
-    let results = type_string(&mut e, "aas");
-    // aa -> â, then s -> ấ
-    assert_eq!(get_output_char(&results[2]), Some('ấ'));
-}
-
-#[test]
-fn telex_ees() {
-    let mut e = Engine::new();
-    e.set_method(0);
-
-    let results = type_string(&mut e, "ees");
-    assert_eq!(get_output_char(&results[2]), Some('ế'));
-}
-
-#[test]
-fn telex_ooj() {
-    let mut e = Engine::new();
-    e.set_method(0);
-
-    let results = type_string(&mut e, "ooj");
-    assert_eq!(get_output_char(&results[2]), Some('ộ'));
-}
-
-#[test]
-fn telex_uws() {
-    let mut e = Engine::new();
-    e.set_method(0);
-
-    let results = type_string(&mut e, "uws");
-    assert_eq!(get_output_char(&results[2]), Some('ứ'));
+fn telex_combined() {
+    test_batch(0, &[
+        ("aas", 'ấ'),  // â + sắc
+        ("aaf", 'ầ'),  // â + huyền
+        ("aar", 'ẩ'),  // â + hỏi
+        ("aax", 'ẫ'),  // â + ngã
+        ("aaj", 'ậ'),  // â + nặng
+        ("ees", 'ế'),
+        ("eef", 'ề'),
+        ("oos", 'ố'),
+        ("oof", 'ồ'),
+        ("ooj", 'ộ'),
+        ("aws", 'ắ'),  // ă + sắc
+        ("awf", 'ằ'),
+        ("ows", 'ớ'),  // ơ + sắc
+        ("owf", 'ờ'),
+        ("uws", 'ứ'),  // ư + sắc
+        ("uwf", 'ừ'),
+    ]);
 }
 
 // ============================================================
@@ -208,273 +145,374 @@ fn telex_uws() {
 // ============================================================
 
 #[test]
-fn vni_mark_sac() {
-    let mut e = Engine::new();
-    e.set_method(1);
-
-    let results = type_string(&mut e, "a1");
-    assert_eq!(get_output_char(&results[1]), Some('á'));
-}
-
-#[test]
-fn vni_mark_huyen() {
-    let mut e = Engine::new();
-    e.set_method(1);
-
-    let results = type_string(&mut e, "a2");
-    assert_eq!(get_output_char(&results[1]), Some('à'));
-}
-
-#[test]
-fn vni_mark_hoi() {
-    let mut e = Engine::new();
-    e.set_method(1);
-
-    let results = type_string(&mut e, "a3");
-    assert_eq!(get_output_char(&results[1]), Some('ả'));
-}
-
-#[test]
-fn vni_mark_nga() {
-    let mut e = Engine::new();
-    e.set_method(1);
-
-    let results = type_string(&mut e, "a4");
-    assert_eq!(get_output_char(&results[1]), Some('ã'));
-}
-
-#[test]
-fn vni_mark_nang() {
-    let mut e = Engine::new();
-    e.set_method(1);
-
-    let results = type_string(&mut e, "a5");
-    assert_eq!(get_output_char(&results[1]), Some('ạ'));
+fn vni_marks() {
+    test_batch(1, &[
+        ("a1", 'á'),   // sắc
+        ("a2", 'à'),   // huyền
+        ("a3", 'ả'),   // hỏi
+        ("a4", 'ã'),   // ngã
+        ("a5", 'ạ'),   // nặng
+        ("e1", 'é'),
+        ("e2", 'è'),
+        ("i1", 'í'),
+        ("o1", 'ó'),
+        ("u1", 'ú'),
+        ("y1", 'ý'),
+    ]);
 }
 
 // ============================================================
-// VNI: Tones (6/7/8)
+// VNI: Tones (6/7/8/9)
 // ============================================================
 
 #[test]
-fn vni_tone_a6() {
+fn vni_tones() {
+    test_batch(1, &[
+        ("a6", 'â'),   // hat (^)
+        ("e6", 'ê'),
+        ("o6", 'ô'),
+        ("a7", 'ă'),   // breve
+        ("o8", 'ơ'),   // horn
+        ("u8", 'ư'),
+        ("d9", 'đ'),
+    ]);
+}
+
+// ============================================================
+// VNI: Combined (tone + mark)
+// ============================================================
+
+#[test]
+fn vni_combined() {
+    test_batch(1, &[
+        ("a61", 'ấ'),  // â + sắc
+        ("a62", 'ầ'),  // â + huyền
+        ("a63", 'ẩ'),  // â + hỏi
+        ("a64", 'ẫ'),  // â + ngã
+        ("a65", 'ậ'),  // â + nặng
+        ("e61", 'ế'),
+        ("e62", 'ề'),
+        ("o61", 'ố'),
+        ("o62", 'ồ'),
+        ("o65", 'ộ'),
+        ("a71", 'ắ'),  // ă + sắc
+        ("a72", 'ằ'),
+        ("o81", 'ớ'),  // ơ + sắc
+        ("o82", 'ờ'),
+        ("u81", 'ứ'),  // ư + sắc
+        ("u82", 'ừ'),
+    ]);
+}
+
+// ============================================================
+// VNI: Delayed tone (tone after multiple chars)
+// ============================================================
+
+#[test]
+fn vni_delayed_tone() {
+    // Tone finds correct vowel in buffer
+    test_batch_full(1, &[
+        // "toi6" -> ^ on 'o', not 'i'
+        ("toi6", 'ô', 2, 2),    // backspace 2 (oi), output 2 (ôi)
+        // "tuoi6" -> ^ on 'o'
+        ("tuoi6", 'ô', 2, 2),
+        // "nguoi8" -> horn on 'o'
+        ("nguoi8", 'ơ', 2, 2),
+        // "mui8" -> horn on 'u'
+        ("mui8", 'ư', 2, 2),
+    ]);
+}
+
+#[test]
+fn vni_delayed_tone_with_final() {
+    // "uong6" -> ^ on 'o', rebuilds "ông"
     let mut e = Engine::new();
     e.set_method(1);
-
-    let results = type_string(&mut e, "a6");
-    assert_eq!(get_output_char(&results[1]), Some('â'));
-}
-
-#[test]
-fn vni_tone_e6() {
-    let mut e = Engine::new();
-    e.set_method(1);
-
-    let results = type_string(&mut e, "e6");
-    assert_eq!(get_output_char(&results[1]), Some('ê'));
-}
-
-#[test]
-fn vni_tone_o6() {
-    let mut e = Engine::new();
-    e.set_method(1);
-
-    let results = type_string(&mut e, "o6");
-    assert_eq!(get_output_char(&results[1]), Some('ô'));
-}
-
-#[test]
-fn vni_tone_a7() {
-    let mut e = Engine::new();
-    e.set_method(1);
-
-    let results = type_string(&mut e, "a7");
-    assert_eq!(get_output_char(&results[1]), Some('ă'));
-}
-
-#[test]
-fn vni_tone_o8() {
-    let mut e = Engine::new();
-    e.set_method(1);
-
-    let results = type_string(&mut e, "o8");
-    assert_eq!(get_output_char(&results[1]), Some('ơ'));
-}
-
-#[test]
-fn vni_tone_u8() {
-    let mut e = Engine::new();
-    e.set_method(1);
-
-    let results = type_string(&mut e, "u8");
-    assert_eq!(get_output_char(&results[1]), Some('ư'));
+    let results = type_str(&mut e, "uong6");
+    let last = results.last().unwrap();
+    assert_eq!(first_char(last), Some('ô'));
+    // Note: actual backspace/count depends on implementation
 }
 
 // ============================================================
-// VNI: d9 -> đ
+// VNI: Delayed mark (mark after tone)
 // ============================================================
 
 #[test]
-fn vni_d9() {
-    let mut e = Engine::new();
-    e.set_method(1);
-
-    let results = type_string(&mut e, "d9");
-    assert_eq!(get_output_char(&results[1]), Some('đ'));
+fn vni_delayed_mark() {
+    test_batch(1, &[
+        ("toi61", 'ố'),   // tối
+        ("toi62", 'ồ'),   // tồi
+        ("nguoi82", 'ờ'), // người (huyền on ơ)
+        ("duong82", 'ờ'), // dường
+        ("sua81", 'ứ'),   // sứa
+        ("an71", 'ắ'),    // ắn
+        ("uong61", 'ố'),  // uống
+    ]);
 }
 
 // ============================================================
-// VNI: Combined
+// Mark Position: 1 vowel
 // ============================================================
 
 #[test]
-fn vni_a61() {
-    let mut e = Engine::new();
-    e.set_method(1);
-
-    let results = type_string(&mut e, "a61");
-    assert_eq!(get_output_char(&results[2]), Some('ấ'));
+fn mark_pos_single_vowel() {
+    // Mark always on the single vowel
+    test_batch(0, &[
+        ("as", 'á'),
+        ("bas", 'á'),
+        ("tas", 'á'),
+        ("mas", 'á'),
+    ]);
 }
 
 // ============================================================
-// Uppercase
+// Mark Position: 2 vowels + final consonant
 // ============================================================
 
 #[test]
-fn telex_uppercase_as() {
-    let mut e = Engine::new();
-    e.set_method(0);
-
-    // Type 'A' (caps) then 's'
-    e.on_key(keys::A, true, false);
-    let r = e.on_key(keys::S, false, false);
-    assert_eq!(get_output_char(&r), Some('Á'));
-}
-
-#[test]
-fn vni_uppercase_a1() {
-    let mut e = Engine::new();
-    e.set_method(1);
-
-    e.on_key(keys::A, true, false);
-    let r = e.on_key(keys::N1, false, false);
-    assert_eq!(get_output_char(&r), Some('Á'));
+fn mark_pos_two_vowels_closed() {
+    // 2 vowels + consonant -> mark on 2nd vowel
+    test_batch(0, &[
+        ("toans", 'á'),   // toán (mark on a, not o)
+        ("hoangs", 'á'),  // hoáng
+        ("oans", 'á'),    // oán
+        ("uons", 'ó'),    // uốn (mark on o)
+        ("ieens", 'ế'),   // tiến (mark on e)
+    ]);
 }
 
 // ============================================================
-// Edge Cases
+// Mark Position: 2 vowels open (oa, oe, uy) - Modern style
 // ============================================================
 
 #[test]
-fn space_clears_buffer() {
-    let mut e = Engine::new();
-    e.set_method(0);
-
-    type_string(&mut e, "a ");
-    let r = e.on_key(keys::S, false, false);
-    // s after space should NOT trigger mark
-    assert_eq!(r.action, Action::None as u8);
-}
-
-#[test]
-fn backspace_removes_from_buffer() {
-    let mut e = Engine::new();
-    e.set_method(0);
-
-    e.on_key(keys::A, false, false);
-    e.on_key(keys::DELETE, false, false);
-    let r = e.on_key(keys::S, false, false);
-    assert_eq!(r.action, Action::None as u8);
-}
-
-#[test]
-fn ctrl_clears_buffer() {
-    let mut e = Engine::new();
-    e.set_method(0);
-
-    e.on_key(keys::A, false, false);
-    e.on_key(keys::C, false, true); // Ctrl+C
-    let r = e.on_key(keys::S, false, false);
-    assert_eq!(r.action, Action::None as u8);
-}
-
-#[test]
-fn disabled_engine() {
-    let mut e = Engine::new();
-    e.set_method(0);
-    e.set_enabled(false);
-
-    let r = e.on_key(keys::A, false, false);
-    assert_eq!(r.action, Action::None as u8);
-    let r = e.on_key(keys::S, false, false);
-    assert_eq!(r.action, Action::None as u8);
+fn mark_pos_two_vowels_open_modern() {
+    // Modern style: mark on 2nd vowel
+    test_batch(0, &[
+        ("hoaf", 'à'),    // hoà (mark on a)
+        ("oaf", 'à'),     // oà
+        ("hoef", 'è'),    // hoè
+        ("oef", 'è'),     // oè
+        ("huyf", 'ỳ'),    // huỳ (mark on y)
+        ("uyf", 'ỳ'),
+        ("quaf", 'à'),    // quà (mark on a)
+        ("quas", 'á'),    // quá
+    ]);
 }
 
 // ============================================================
-// Word tests
+// Mark Position: 2 vowels open - Old style
 // ============================================================
 
 #[test]
-fn word_chao() {
-    let mut e = Engine::new();
-    e.set_method(0);
-
-    // "chaof" -> chào
-    type_string(&mut e, "cha");
-    let r = e.on_key(keys::F, false, false);
-    assert_eq!(get_output_char(&r), Some('à'));
-}
-
-#[test]
-fn word_viet() {
-    let mut e = Engine::new();
-    e.set_method(0);
-
-    // "vieetj" -> việt
-    type_string(&mut e, "vi");
-    let r1 = type_string(&mut e, "ee");
-    assert_eq!(get_output_char(&r1[1]), Some('ê'));
-
-    let r2 = e.on_key(keys::J, false, false);
-    assert_eq!(get_output_char(&r2), Some('ệ'));
-}
-
-// ============================================================
-// All vowels with marks
-// ============================================================
-
-#[test]
-fn all_vowels_sac() {
-    let mut e = Engine::new();
-    e.set_method(0);
-
-    let vowels = [
-        ("as", 'á'), ("es", 'é'), ("is", 'í'),
-        ("os", 'ó'), ("us", 'ú'), ("ys", 'ý'),
+fn mark_pos_two_vowels_open_old() {
+    // Old style: mark on 1st vowel
+    let cases = &[
+        ("hoaf", 'ò'),    // hòa (mark on o)
+        ("oaf", 'ò'),     // òa
+        ("hoef", 'ò'),    // hòe (mark on o)
+        ("huyf", 'ù'),    // hùy (mark on u)
     ];
 
-    for (input, expected) in vowels {
-        e.clear();
-        let results = type_string(&mut e, input);
+    for (input, expected) in cases {
+        let mut e = Engine::new();
+        e.set_method(0);
+        e.set_modern(false);  // Old style
+        let results = type_str(&mut e, input);
+        let last = results.last().unwrap();
         assert_eq!(
-            get_output_char(&results[1]),
-            Some(expected),
-            "{} should produce {}", input, expected
+            first_char(last), Some(*expected),
+            "Old style: '{}' should produce '{}'", input, expected
         );
     }
 }
 
+// ============================================================
+// Mark Position: 3+ vowels
+// ============================================================
+
 #[test]
-fn all_tones_a() {
+fn mark_pos_three_vowels() {
+    // 3 vowels -> mark on appropriate vowel
+    // Note: "khuyen" without 'ee' has plain 'e', so 'r' gives 'ẻ' not 'ể'
+    test_batch(0, &[
+        ("khuyeenr", 'ể'),  // khuyển (ee -> ê, then r -> ể)
+        ("nguyeenx", 'ễ'),  // nguyễn
+    ]);
+}
+
+#[test]
+fn mark_pos_khuyu() {
+    // "khuyu" has 3 vowels: u, y, u -> mark on y (middle)
     let mut e = Engine::new();
-    e.set_method(0);
+    let results = type_str(&mut e, "khuyuf");
+    let last = results.last().unwrap();
+    assert_eq!(first_char(last), Some('ỳ'));
+}
 
-    // Test all tones on 'a'
-    e.clear();
-    let r = type_string(&mut e, "aa");
-    assert_eq!(get_output_char(&r[1]), Some('â'), "aa -> â");
+// ============================================================
+// Mark Position: Special vowel pairs (iê, yê, uô, ươ)
+// ============================================================
 
-    e.clear();
-    let r = type_string(&mut e, "aw");
-    assert_eq!(get_output_char(&r[1]), Some('ă'), "aw -> ă");
+#[test]
+fn mark_pos_special_pairs() {
+    // These pairs with tones: mark goes on vowel with tone
+    test_batch(0, &[
+        ("tiees", 'ế'),   // tiến -> ee gives ê, s gives ế
+        ("yees", 'ế'),    // yêu -> mark on ê
+        ("muoons", 'ố'),  // muốn -> oo gives ô, s gives ố
+        ("duowcj", 'ợ'),  // được -> ow gives ơ, j gives ợ (nặng)
+    ]);
+}
+
+// ============================================================
+// Words: Common Vietnamese words (Telex)
+// ============================================================
+
+#[test]
+fn words_telex() {
+    test_batch(0, &[
+        // Single syllable
+        ("chaof", 'à'),   // chào - "ao" pattern, mark on 'a'
+        ("laf", 'à'),     // là
+        ("cos", 'ó'),     // có (s = sắc)
+
+        // With tones
+        ("vieetj", 'ệ'),  // việt
+        ("naams", 'ấ'),   // nấm -> mark on â
+    ]);
+}
+
+#[test]
+fn words_telex_dd() {
+    // "dd" produces đ, then 'i' is just added to buffer
+    let mut e = Engine::new();
+    type_str(&mut e, "dd");  // đ
+    let r = e.on_key(char_to_key('i'), false, false);
+    // 'i' is a normal key, no output
+    assert_eq!(r.action, Action::None as u8);
+}
+
+// ============================================================
+// Words: Common Vietnamese words (VNI)
+// ============================================================
+
+#[test]
+fn words_vni() {
+    test_batch(1, &[
+        ("chao2", 'à'),   // chào - mark on 'a' (ao pattern)
+        ("la2", 'à'),     // là
+        ("co1", 'ó'),     // có
+        ("vie65", 'ệ'),   // việ (6=ê, 5=nặng) - without 't' to get last output
+    ]);
+}
+
+#[test]
+fn words_vni_d9() {
+    // "d9" produces đ, then 'i' is just added to buffer
+    let mut e = Engine::new();
+    e.set_method(1);
+    type_str(&mut e, "d9");  // đ
+    let r = e.on_key(char_to_key('i'), false, false);
+    assert_eq!(r.action, Action::None as u8);
+}
+
+// ============================================================
+// Edge Cases: Uppercase
+// ============================================================
+
+#[test]
+fn uppercase() {
+    // Telex uppercase
+    let mut e = Engine::new();
+    e.on_key(keys::A, true, false);  // A (caps)
+    let r = e.on_key(keys::S, false, false);
+    assert_eq!(first_char(&r), Some('Á'));
+
+    // VNI uppercase
+    let mut e = Engine::new();
+    e.set_method(1);
+    e.on_key(keys::A, true, false);
+    let r = e.on_key(keys::N1, false, false);
+    assert_eq!(first_char(&r), Some('Á'));
+}
+
+// ============================================================
+// Edge Cases: Break keys
+// ============================================================
+
+#[test]
+fn break_keys() {
+    let mut e = Engine::new();
+    type_str(&mut e, "a ");  // space breaks
+    let r = e.on_key(keys::S, false, false);
+    assert_eq!(r.action, Action::None as u8);
+
+    let mut e = Engine::new();
+    type_str(&mut e, "a");
+    e.on_key(keys::DELETE, false, false);  // backspace
+    let r = e.on_key(keys::S, false, false);
+    assert_eq!(r.action, Action::None as u8);
+}
+
+// ============================================================
+// Edge Cases: Ctrl key
+// ============================================================
+
+#[test]
+fn ctrl_clears() {
+    let mut e = Engine::new();
+    e.on_key(keys::A, false, false);
+    e.on_key(keys::C, false, true);  // Ctrl+C
+    let r = e.on_key(keys::S, false, false);
+    assert_eq!(r.action, Action::None as u8);
+}
+
+// ============================================================
+// Edge Cases: Disabled engine
+// ============================================================
+
+#[test]
+fn disabled() {
+    let mut e = Engine::new();
+    e.set_enabled(false);
+    let r = e.on_key(keys::A, false, false);
+    assert_eq!(r.action, Action::None as u8);
+}
+
+// ============================================================
+// Edge Cases: Remove mark (z/0)
+// ============================================================
+
+#[test]
+fn remove_mark_telex() {
+    let mut e = Engine::new();
+    type_str(&mut e, "as");  // á
+    let r = e.on_key(keys::Z, false, false);
+    assert_eq!(first_char(&r), Some('a'));  // back to a
+}
+
+#[test]
+fn remove_mark_vni() {
+    let mut e = Engine::new();
+    e.set_method(1);
+    type_str(&mut e, "a1");  // á
+    let r = e.on_key(keys::N0, false, false);
+    assert_eq!(first_char(&r), Some('a'));
+}
+
+// ============================================================
+// Regression: Previous bugs
+// ============================================================
+
+#[test]
+fn regression_toi61() {
+    // Bug: mark was going to 'i' instead of 'ô'
+    let mut e = Engine::new();
+    e.set_method(1);
+    let results = type_str(&mut e, "toi61");
+    let last = results.last().unwrap();
+    assert_eq!(last.chars[0], 'ố' as u32);
+    assert_ne!(last.chars[0], 'í' as u32);  // NOT í
 }

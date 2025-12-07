@@ -108,13 +108,17 @@ impl Buffer {
     /// Find indices of vowels in buffer
     pub fn find_vowels(&self) -> Vec<usize> {
         use crate::data::keys;
-        let mut vowels = Vec::new();
-        for i in 0..self.len {
-            if keys::is_vowel(self.data[i].key) {
-                vowels.push(i);
-            }
-        }
-        vowels
+        (0..self.len)
+            .filter(|&i| keys::is_vowel(self.data[i].key))
+            .collect()
+    }
+
+    /// Find vowel position by key (from end)
+    pub fn find_vowel_by_key(&self, key: u16) -> Option<usize> {
+        use crate::data::keys;
+        (0..self.len)
+            .rev()
+            .find(|&i| self.data[i].key == key && keys::is_vowel(key))
     }
 
     /// Iterate over chars
