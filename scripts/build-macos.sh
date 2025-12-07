@@ -72,6 +72,18 @@ if [ "$CLEAN_INSTALL" = true ]; then
     echo ""
 fi
 
+# Always kill running GoNhanh before build (even without --clean)
+if pgrep -x "GoNhanh" > /dev/null 2>&1; then
+    echo "🛑 Stopping running GoNhanh..."
+    pkill -x "GoNhanh" 2>/dev/null || true
+    sleep 0.5
+    # Force kill if still running
+    if pgrep -x "GoNhanh" > /dev/null 2>&1; then
+        pkill -9 -x "GoNhanh" 2>/dev/null || true
+        sleep 0.5
+    fi
+fi
+
 echo "🍎 Building macOS app..."
 
 # Build macOS app with xcodebuild

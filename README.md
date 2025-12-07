@@ -67,6 +67,23 @@ _\* Windows: đang trong lộ trình phát triển (Roadmap)._
 
 Nếu cần chuyển mã hay dùng bảng mã cũ, dùng UniKey/EVKey/OpenKey.
 
+### Các lỗi thường gặp đã được GoNhanh khắc phục
+
+| Lỗi | Mô tả | Bộ gõ khác | GoNhanh |
+| :-- | :---- | :--------: | :-----: |
+| **Dính chữ trên Chrome/Edge** | Gõ `aa` → `aâ`, `dd` → `dđ` do autocomplete | ⚠️ Cần tắt autocomplete | ✅ Tự động fix |
+| **Lặp chữ trên Google Docs** | Gõ `được` → `đđược` | ⚠️ Cần bật "Sửa lỗi" | ✅ Tự động fix |
+| **Mất dấu trên Excel** | Gõ `trường` → `trương` | ⚠️ Không ổn định | ✅ Atomic replacement |
+| **Nhảy chữ trên Terminal/CLI** | Shift+Left không hoạt động đúng | ❌ Không hỗ trợ tốt | ✅ Smart detection |
+| **Xung đột bộ gõ macOS** | Gạch chân, nhảy ký tự khi gõ | ⚠️ Cần config thủ công | ✅ Hook cấp thấp |
+
+**Cách GoNhanh giải quyết:**
+- **Smart App Detection**: Tự động nhận diện app (Chrome, Excel, Terminal...) và chọn phương thức phù hợp.
+- **Atomic Text Replacement**: Dùng Shift+Left select thay vì backspace trên các app có autocomplete.
+- **Low-level Hook**: CGEventTap đảm bảo độ ổn định cao trên mọi ứng dụng.
+
+Chi tiết: [docs/common-issues.md](docs/common-issues.md)
+
 ## Cách hoạt động
 
 Engine dựa trên ngữ âm học tiếng Việt thay vì bảng tra cứu:
