@@ -58,7 +58,8 @@ struct OnboardingView: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
         }
-        .frame(width: 480, height: 420)
+        .frame(width: 480)
+        .fixedSize(horizontal: false, vertical: true)
         .onAppear { startPermissionCheck() }
         .onDisappear { stopPermissionCheck() }
     }
