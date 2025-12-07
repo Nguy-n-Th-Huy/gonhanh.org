@@ -115,8 +115,8 @@ impl Result {
 /// Transform type for revert tracking
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Transform {
-    Mark(u16, u8), // (key, mark_value)
-    Tone(u16, u8), // (key, tone_value)
+    Mark(u16, u8),      // (key, mark_value)
+    Tone(u16, u8, u16), // (key, tone_value, target_vowel_key)
 }
 
 /// Main Vietnamese IME engine
@@ -212,9 +212,9 @@ impl Engine {
             .collect();
 
         if let Some((tone, target_key)) = m.is_tone_for(key, &vowel_keys) {
-            // Check for double-key revert
-            if let Some(Transform::Tone(last_key, _)) = self.last_transform {
-                if last_key == key {
+            // Check for double-key revert (only if same key AND same target vowel)
+            if let Some(Transform::Tone(last_key, _, last_target)) = self.last_transform {
+                if last_key == key && last_target == target_key {
                     return self.revert_tone(key, caps);
                 }
             }
