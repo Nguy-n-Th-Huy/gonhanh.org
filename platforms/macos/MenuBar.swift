@@ -24,12 +24,7 @@ class MenuBarController {
         setupMenu()
         updateStatusButton()
 
-        let hasCompleted = UserDefaults.standard.bool(forKey: SettingsKey.hasCompletedOnboarding)
-        let hasPermission = AXIsProcessTrusted()
-
-        // Chỉ skip onboarding khi ĐÃ hoàn tất onboarding VÀ có quyền
-        // Nếu chỉ có permissionGranted (đã restart) nhưng chưa hasCompleted -> vẫn show onboarding
-        if hasCompleted && hasPermission {
+        if UserDefaults.standard.bool(forKey: SettingsKey.hasCompletedOnboarding) && AXIsProcessTrusted() {
             loadSettings()
             startEngine()
         } else {
