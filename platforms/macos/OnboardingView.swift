@@ -11,7 +11,23 @@ struct OnboardingView: View {
 
     // Đã restart sau khi cấp quyền?
     private var isPostRestart: Bool {
-        UserDefaults.standard.bool(forKey: SettingsKey.permissionGranted)
+        UserDefaults.standard.bool(forKey: SettingsKey.permissionGranted) && AXIsProcessTrusted()
+    }
+
+    // Tổng số steps theo flow
+    private var totalSteps: Int {
+        isPostRestart ? 2 : 2
+    }
+
+    // Step index cho dots (0-based)
+    private var currentStepIndex: Int {
+        if isPostRestart {
+            // Post-restart: step 10 -> index 0, step 11 -> index 1
+            return currentStep - 10
+        } else {
+            // Pre-restart: step 0 -> index 0, step 1 -> index 1
+            return currentStep
+        }
     }
 
     var body: some View {
@@ -23,9 +39,9 @@ struct OnboardingView: View {
         .frame(width: 480)
         .onAppear {
             hasPermission = AXIsProcessTrusted()
-            // Nếu đã restart và có quyền -> bắt đầu từ Success
-            if isPostRestart && hasPermission {
-                currentStep = 10  // Success step
+            // Nếu đã restart và có quyền -> bắt đầu từ Setup (chọn bảng mã)
+            if UserDefaults.standard.bool(forKey: SettingsKey.permissionGranted) && hasPermission {
+                currentStep = 10  // Success step đầu tiên
             }
         }
         .onReceive(timer) { _ in
