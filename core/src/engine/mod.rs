@@ -251,9 +251,6 @@ impl Engine {
             return Some(Result::send(1, &[w]));
         }
 
-        // Track if buffer was empty (first char of word)
-        let was_empty = self.buf.is_empty();
-
         // Try adding U (ư base) to buffer and validate
         self.buf.push(Char::new(keys::U, caps));
 
