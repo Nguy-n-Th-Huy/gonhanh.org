@@ -22,6 +22,8 @@ curl -fsSL https://raw.githubusercontent.com/khaphanspace/gonhanh.org/main/scrip
 | `gn vni` | Chuyển sang VNI |
 | `gn telex` | Chuyển sang Telex |
 | `gn status` | Xem trạng thái |
+| `gn update` | Cập nhật phiên bản mới |
+| `gn help` | Hiển thị trợ giúp |
 
 ### Telex (mặc định)
 
@@ -44,7 +46,7 @@ curl -fsSL https://raw.githubusercontent.com/khaphanspace/gonhanh.org/main/scrip
 ## Nâng cấp
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/khaphanspace/gonhanh.org/main/scripts/install-linux.sh | bash
+gn update
 ```
 
 ---

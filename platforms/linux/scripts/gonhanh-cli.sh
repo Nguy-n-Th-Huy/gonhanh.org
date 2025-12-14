@@ -29,8 +29,14 @@ case "$1" in
     toggle|"")
         fcitx5-remote -t 2>/dev/null
         ;;
+    version|-v|--version)
+        echo "Gõ Nhanh v1.0.0"
+        ;;
+    update)
+        echo "→ Đang cập nhật Gõ Nhanh..."
+        curl -fsSL https://raw.githubusercontent.com/khaphanspace/gonhanh.org/main/scripts/install-linux.sh | bash
+        ;;
     status)
-        # Show current method
         if [[ -f "$METHOD_FILE" ]]; then
             METHOD=$(cat "$METHOD_FILE")
         else
@@ -44,7 +50,7 @@ case "$1" in
             echo "Tiếng Việt: TẮT ($METHOD)"
         fi
         ;;
-    *)
+    help|-h|--help|*)
         echo "Gõ Nhanh - Vietnamese Input Method"
         echo ""
         echo "Cách dùng:"
@@ -54,5 +60,8 @@ case "$1" in
         echo "  gn telex    Chuyển sang Telex"
         echo "  gn vni      Chuyển sang VNI"
         echo "  gn status   Xem trạng thái"
+        echo "  gn update   Cập nhật phiên bản mới"
+        echo "  gn version  Xem phiên bản"
+        echo "  gn help     Hiển thị trợ giúp"
         ;;
 esac
