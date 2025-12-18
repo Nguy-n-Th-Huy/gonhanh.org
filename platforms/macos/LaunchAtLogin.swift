@@ -1,132 +1,74 @@
 import Foundation
 import ServiceManagement
 
-// MARK: - Debug Logging
-
-private func debugLog(_ message: String) {
-    #if DEBUG
-    print(message)
-    #endif
-}
-
 // MARK: - Launch at Login Manager
 
-/// Protocol for launch at login functionality (enables testing)
-protocol LaunchAtLoginProtocol {
-    var isEnabled: Bool { get }
-    func enable() throws
-    func disable() throws
-}
-
 /// Manages app's launch at login state using SMAppService
-class LaunchAtLoginManager: LaunchAtLoginProtocol {
+/// All SMAppService calls run on background thread to avoid blocking UI
+class LaunchAtLoginManager {
     static let shared = LaunchAtLoginManager()
-
     private init() {}
 
-    /// Check if launch at login is currently enabled
-    var isEnabled: Bool {
-        if #available(macOS 13.0, *) {
-            return SMAppService.mainApp.status == .enabled
+    /// Check status asynchronously (SMAppService can be slow)
+    func checkStatus(completion: @escaping (Bool) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            var enabled = false
+            if #available(macOS 13.0, *) {
+                enabled = SMAppService.mainApp.status == .enabled
+            }
+            DispatchQueue.main.async {
+                completion(enabled)
+            }
         }
-        return false
     }
 
     /// Enable launch at login
-    func enable() throws {
-        if #available(macOS 13.0, *) {
-            if SMAppService.mainApp.status != .enabled {
-                try SMAppService.mainApp.register()
-                debugLog("[LaunchAtLogin] Enabled successfully")
+    func enable(completion: @escaping (Bool) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            var success = false
+            if #available(macOS 13.0, *) {
+                // Unregister first to prevent duplicate entries (unsigned app issue)
+                try? SMAppService.mainApp.unregister()
+                do {
+                    try SMAppService.mainApp.register()
+                    success = SMAppService.mainApp.status == .enabled
+                } catch {}
             }
-        } else {
-            debugLog("[LaunchAtLogin] Requires macOS 13.0+")
+            DispatchQueue.main.async {
+                completion(success)
+            }
         }
     }
 
     /// Disable launch at login
-    func disable() throws {
-        if #available(macOS 13.0, *) {
-            if SMAppService.mainApp.status == .enabled {
-                try SMAppService.mainApp.unregister()
-                debugLog("[LaunchAtLogin] Disabled successfully")
+    func disable(completion: @escaping (Bool) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            if #available(macOS 13.0, *) {
+                try? SMAppService.mainApp.unregister()
+            }
+            DispatchQueue.main.async {
+                completion(true)
             }
         }
-    }
-
-    /// Get current status as string (for debugging)
-    var statusDescription: String {
-        if #available(macOS 13.0, *) {
-            switch SMAppService.mainApp.status {
-            case .enabled:
-                return "enabled"
-            case .notFound:
-                return "notFound"
-            case .notRegistered:
-                return "notRegistered"
-            case .requiresApproval:
-                return "requiresApproval"
-            @unknown default:
-                return "unknown"
-            }
-        }
-        return "unsupported"
     }
 }
 
 // MARK: - Mock for Testing
 
-/// Mock implementation for unit testing
-class MockLaunchAtLoginManager: LaunchAtLoginProtocol {
-    private(set) var isEnabled: Bool = false
-    private(set) var enableCallCount = 0
-    private(set) var disableCallCount = 0
-    var shouldThrowOnEnable = false
-    var shouldThrowOnDisable = false
+class MockLaunchAtLoginManager {
+    var isEnabled: Bool = false
 
-    func enable() throws {
-        enableCallCount += 1
-        if shouldThrowOnEnable {
-            throw LaunchAtLoginError.registrationFailed
-        }
+    func checkStatus(completion: @escaping (Bool) -> Void) {
+        completion(isEnabled)
+    }
+
+    func enable(completion: @escaping (Bool) -> Void) {
         isEnabled = true
+        completion(true)
     }
 
-    func disable() throws {
-        disableCallCount += 1
-        if shouldThrowOnDisable {
-            throw LaunchAtLoginError.unregistrationFailed
-        }
+    func disable(completion: @escaping (Bool) -> Void) {
         isEnabled = false
-    }
-
-    func reset() {
-        isEnabled = false
-        enableCallCount = 0
-        disableCallCount = 0
-        shouldThrowOnEnable = false
-        shouldThrowOnDisable = false
-    }
-}
-
-enum LaunchAtLoginError: Error {
-    case registrationFailed
-    case unregistrationFailed
-}
-
-// MARK: - Settings Integration
-
-extension LaunchAtLoginManager {
-    /// Key for UserDefaults (backup/fallback)
-    static let userDefaultsKey = "launchAtLoginEnabled"
-
-    /// Sync state with UserDefaults
-    func syncWithUserDefaults() {
-        UserDefaults.standard.set(isEnabled, forKey: Self.userDefaultsKey)
-    }
-
-    /// Get cached state from UserDefaults (for UI before SMAppService check)
-    var cachedState: Bool {
-        UserDefaults.standard.bool(forKey: Self.userDefaultsKey)
+        completion(true)
     }
 }
