@@ -478,20 +478,13 @@ impl Engine {
 
         // Special case: uo/ou compound for horn - find adjacent pair only
         // But ONLY apply compound logic when BOTH vowels are plain (not when switching)
-        if tone_type == ToneType::Horn && self.has_uo_compound() && !is_switching {
-            for i in 0..self.buf.len().saturating_sub(1) {
-                let c1 = self.buf.get(i);
-                let c2 = self.buf.get(i + 1);
-                if let (Some(c1), Some(c2)) = (c1, c2) {
-                    let is_uo = c1.key == keys::U && c2.key == keys::O;
-                    let is_ou = c1.key == keys::O && c2.key == keys::U;
+        if tone_type == ToneType::Horn && !is_switching {
+            if let Some((pos1, pos2)) = self.find_uo_compound_positions() {
+                if let (Some(c1), Some(c2)) = (self.buf.get(pos1), self.buf.get(pos2)) {
                     // Only apply compound when BOTH vowels have no tone
-                    let c1_plain = c1.tone == tone::NONE;
-                    let c2_plain = c2.tone == tone::NONE;
-                    if (is_uo || is_ou) && c1_plain && c2_plain {
-                        target_positions.push(i);
-                        target_positions.push(i + 1);
-                        break; // Only first compound
+                    if c1.tone == tone::NONE && c2.tone == tone::NONE {
+                        target_positions.push(pos1);
+                        target_positions.push(pos2);
                     }
                 }
             }
@@ -613,10 +606,9 @@ impl Engine {
 
         self.last_transform = Some(Transform::Tone(key, tone_val));
 
-        // Reposition mark if needed
-        let mark_moved_from = self.reposition_mark_if_needed();
+        // Reposition tone mark if vowel pattern changed
         let mut rebuild_pos = earliest_pos;
-        if let Some(old_pos) = mark_moved_from {
+        if let Some((old_pos, _)) = self.reposition_tone_if_needed() {
             rebuild_pos = rebuild_pos.min(old_pos);
         }
 
@@ -717,34 +709,34 @@ impl Engine {
         None
     }
 
-    /// Check for uo compound in buffer (any tone state)
-    fn has_uo_compound(&self) -> bool {
-        let mut prev_key: Option<u16> = None;
-        for c in self.buf.iter() {
-            if keys::is_vowel(c.key) {
-                if let Some(pk) = prev_key {
-                    if (pk == keys::U && c.key == keys::O) || (pk == keys::O && c.key == keys::U) {
-                        return true;
-                    }
+    /// Find positions of U+O or O+U compound (adjacent vowels)
+    /// Returns Some((first_pos, second_pos)) if found, None otherwise
+    fn find_uo_compound_positions(&self) -> Option<(usize, usize)> {
+        for i in 0..self.buf.len().saturating_sub(1) {
+            if let (Some(c1), Some(c2)) = (self.buf.get(i), self.buf.get(i + 1)) {
+                let is_uo = c1.key == keys::U && c2.key == keys::O;
+                let is_ou = c1.key == keys::O && c2.key == keys::U;
+                if is_uo || is_ou {
+                    return Some((i, i + 1));
                 }
-                prev_key = Some(c.key);
-            } else {
-                prev_key = None;
             }
         }
-        false
+        None
+    }
+
+    /// Check for uo compound in buffer (any tone state)
+    fn has_uo_compound(&self) -> bool {
+        self.find_uo_compound_positions().is_some()
     }
 
     /// Check for complete ươ compound (both u and o have horn)
     fn has_complete_uo_compound(&self) -> bool {
-        for i in 0..self.buf.len().saturating_sub(1) {
-            if let (Some(c1), Some(c2)) = (self.buf.get(i), self.buf.get(i + 1)) {
+        if let Some((pos1, pos2)) = self.find_uo_compound_positions() {
+            if let (Some(c1), Some(c2)) = (self.buf.get(pos1), self.buf.get(pos2)) {
                 // Check ư + ơ pattern (both with horn)
                 let is_u_horn = c1.key == keys::U && c1.tone == tone::HORN;
                 let is_o_horn = c2.key == keys::O && c2.tone == tone::HORN;
-                if is_u_horn && is_o_horn {
-                    return true;
-                }
+                return is_u_horn && is_o_horn;
             }
         }
         false
@@ -786,41 +778,7 @@ impl Engine {
             .collect()
     }
 
-    /// Reposition mark after tone change
-    fn reposition_mark_if_needed(&mut self) -> Option<usize> {
-        let mark_info: Option<(usize, u8)> = self
-            .buf
-            .iter()
-            .enumerate()
-            .find(|(_, c)| c.mark > 0)
-            .map(|(i, c)| (i, c.mark));
-
-        if let Some((old_pos, mark_value)) = mark_info {
-            let vowels = self.collect_vowels();
-            if vowels.is_empty() {
-                return None;
-            }
-
-            let last_vowel_pos = vowels.last().map(|v| v.pos).unwrap_or(0);
-            let has_final = self.has_final_consonant(last_vowel_pos);
-            let has_qu = self.has_qu_initial();
-            let has_gi = self.has_gi_initial();
-            let new_pos = Phonology::find_tone_position(&vowels, has_final, true, has_qu, has_gi);
-
-            if new_pos != old_pos {
-                if let Some(c) = self.buf.get_mut(old_pos) {
-                    c.mark = 0;
-                }
-                if let Some(c) = self.buf.get_mut(new_pos) {
-                    c.mark = mark_value;
-                }
-                return Some(old_pos);
-            }
-        }
-        None
-    }
-
-    /// Reposition tone (sắc/huyền/hỏi/ngã/nặng) after new vowel is added
+    /// Reposition tone (sắc/huyền/hỏi/ngã/nặng) after vowel pattern changes
     ///
     /// When user types out-of-order (e.g., "osa" instead of "oas"), the tone may be
     /// placed on wrong vowel. This function moves it to the correct position based
@@ -999,16 +957,12 @@ impl Engine {
             // This ensures "dduwo" → "đươ" without waiting for a mark
             // Only in Telex mode (0) - VNI uses explicit '7' for horn
             if self.method == 0 && key == keys::O && self.normalize_uo_compound().is_some() {
-                // ươ compound formed - now check if mark needs to move
-                // For ươ compound, mark should be on ơ (2nd vowel with diacritic)
-                // Example: "uwso" → ứo + "o" becomes ứơ but should be ướ (mark on ơ)
-                if let Some(old_pos) = self.reposition_mark_if_needed() {
-                    // Mark was moved - need to rebuild from the old position
-                    // to show the correction
+                // ươ compound formed - reposition tone if needed (ư→ơ)
+                if let Some((old_pos, _)) = self.reposition_tone_if_needed() {
                     return self.rebuild_from_after_insert(old_pos);
                 }
 
-                // No mark to reposition - just output the ơ character
+                // No tone to reposition - just output ơ
                 let vowel_char = chars::to_char(keys::O, caps, tone::HORN, 0).unwrap();
                 return Result::send(0, &[vowel_char]);
             }
