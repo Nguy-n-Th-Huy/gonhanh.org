@@ -1119,3 +1119,238 @@ fn telex_switch_diacritics() {
 fn vni_switch_diacritics() {
     vni(VNI_SWITCH_DIACRITICS);
 }
+
+// ============================================================
+// INVALID BREVE PATTERNS - Issue #44
+// ============================================================
+//
+// Vietnamese phonology: 'ă' (breve) requires final consonant
+// Valid: trăm, năm, răng, xăng, bắt, căn, ...
+// Invalid: ră, să, lă, dă (no final consonant)
+//
+// These patterns should NOT be transformed because they result
+// in invalid Vietnamese syllables.
+
+const TELEX_INVALID_BREVE_OPEN: &[(&str, &str)] = &[
+    // Single consonant + aw → should NOT become C+ă
+    // Because "Că" (open syllable with breve) is invalid Vietnamese
+    ("raw", "raw"), // r + aw → should stay "raw", not "ră"
+    ("saw", "saw"), // s + aw → should stay "saw", not "să"
+    ("law", "law"), // l + aw → should stay "law", not "lă"
+    ("daw", "daw"), // d + aw → should stay "daw", not "dă"
+    ("taw", "taw"), // t + aw → should stay "taw", not "tă"
+    ("naw", "naw"), // n + aw → should stay "naw", not "nă"
+    ("maw", "maw"), // m + aw → should stay "maw", not "mă"
+    ("caw", "caw"), // c + aw → should stay "caw", not "că"
+    ("baw", "baw"), // b + aw → should stay "baw", not "bă"
+    ("haw", "haw"), // h + aw → should stay "haw", not "hă"
+    ("kaw", "kaw"), // k + aw → should stay "kaw", not "kă"
+    ("gaw", "gaw"), // g + aw → should stay "gaw", not "gă"
+    ("vaw", "vaw"), // v + aw → should stay "vaw", not "vă"
+    ("xaw", "xaw"), // x + aw → should stay "xaw", not "xă"
+    // Two consonant initials + aw
+    ("thaw", "thaw"), // th + aw → should stay "thaw", not "thă"
+    ("chaw", "chaw"), // ch + aw → should stay "chaw", not "chă"
+    ("nhaw", "nhaw"), // nh + aw → should stay "nhaw", not "nhă"
+    ("khaw", "khaw"), // kh + aw → should stay "khaw", not "khă"
+    ("phaw", "phaw"), // ph + aw → should stay "phaw", not "phă"
+    ("traw", "traw"), // tr + aw → should stay "traw", not "tră"
+    ("ngaw", "ngaw"), // ng + aw → should stay "ngaw", not "ngă"
+    // Just "aw" alone
+    ("aw", "aw"), // should stay "aw", not "ă"
+];
+
+const VNI_INVALID_BREVE_OPEN: &[(&str, &str)] = &[
+    // Single consonant + a8 → should NOT become C+ă
+    ("ra8", "ra8"), // r + a8 → should stay "ra8", not "ră"
+    ("sa8", "sa8"), // s + a8 → should stay "sa8", not "să"
+    ("la8", "la8"), // l + a8 → should stay "la8", not "lă"
+    ("ta8", "ta8"), // t + a8 → should stay "ta8", not "tă"
+    ("na8", "na8"), // n + a8 → should stay "na8", not "nă"
+    ("ma8", "ma8"), // m + a8 → should stay "ma8", not "mă"
+    ("ca8", "ca8"), // c + a8 → should stay "ca8", not "că"
+    ("ba8", "ba8"), // b + a8 → should stay "ba8", not "bă"
+    ("da8", "da8"), // d + a8 → should stay "da8", not "dă"
+    // Two consonant initials
+    ("tha8", "tha8"), // th + a8 → should stay "tha8", not "thă"
+    ("tra8", "tra8"), // tr + a8 → should stay "tra8", not "tră"
+    ("nga8", "nga8"), // ng + a8 → should stay "nga8", not "ngă"
+    // Just "a8" alone
+    ("a8", "a8"), // should stay "a8", not "ă"
+];
+
+// Valid breve patterns - with final consonant (should transform)
+const TELEX_VALID_BREVE: &[(&str, &str)] = &[
+    // These ARE valid because they have final consonants
+    ("trawm", "trăm"),    // trăm - hundred (no tone)
+    ("nawm", "năm"),      // năm - year/five (no tone)
+    ("rawng", "răng"),    // răng - tooth (no tone)
+    ("xawng", "xăng"),    // xăng - gasoline (no tone)
+    ("bawts", "bắt"),     // bắt - catch (s = sắc tone)
+    ("cawn", "căn"),      // căn - room (no tone)
+    ("dawngr", "dẳng"),   // dẳng - (r = hỏi tone)
+    ("hawng", "hăng"),    // hăng - eager (no tone)
+    ("lawng", "lăng"),    // lăng - mausoleum (no tone)
+    ("sawcs", "sắc"),     // sắc - sharp (s = sắc tone)
+    ("tawngs", "tắng"),   // tắng - (s = sắc tone)
+    ("nawngs", "nắng"),   // nắng - sunny (s = sắc tone)
+    ("vawngs", "vắng"),   // vắng - absent (s = sắc tone)
+    ("mawts", "mắt"),     // mắt - eye (s = sắc tone)
+    ("thawngs", "thắng"), // thắng - win (s = sắc tone)
+    ("khawcs", "khắc"),   // khắc - to carve (s = sắc tone)
+    // Multi-syllable words
+    ("trawm nawm", "trăm năm"),    // trăm năm (no tones)
+    ("sawngx sangf", "sẵng sàng"), // sẵng sàng (sawngx = sẵng, sangf = sàng)
+];
+
+const VNI_VALID_BREVE: &[(&str, &str)] = &[
+    // These ARE valid because they have final consonants
+    ("tra8m", "trăm"),  // trăm - hundred
+    ("na8m", "năm"),    // năm - year/five
+    ("ra8ng", "răng"),  // răng - tooth
+    ("xa8ng", "xăng"),  // xăng - gasoline
+    ("ba81t", "bắt"),   // bắt - catch
+    ("ca8n", "căn"),    // căn - room
+    ("na81ng", "nắng"), // nắng - sunny
+    ("ma81t", "mắt"),   // mắt - eye
+];
+
+// ============================================================
+// INVALID BREVE + VOWEL PATTERNS (ăi, ăo, ău, ăy)
+// ============================================================
+//
+// In Vietnamese, breve 'ă' CANNOT be followed by another vowel.
+// Valid: ăn, ăm, ăng, ăp, ăt, ăc (consonant endings)
+// Invalid: ăi, ăo, ău, ăy (vowel endings)
+
+const TELEX_INVALID_BREVE_DIPHTHONG: &[(&str, &str)] = &[
+    // aw + vowel → should NOT transform
+    ("awi", "awi"),   // ăi is invalid
+    ("awo", "awo"),   // ăo is invalid
+    ("awu", "awu"),   // ău is invalid
+    ("awy", "awy"),   // ăy is invalid
+    ("tawi", "tawi"), // tăi is invalid
+    ("tawo", "tawo"), // tăo is invalid
+    ("tawu", "tawu"), // tău is invalid
+    ("tawy", "tawy"), // tăy is invalid
+    ("mawi", "mawi"), // măi is invalid
+    ("mawo", "mawo"), // măo is invalid
+    ("lawi", "lawi"), // lăi is invalid
+    ("lawo", "lawo"), // lăo is invalid
+    // With tone marks - still invalid
+    ("tawis", "tawis"), // tắi is invalid
+    ("tawof", "tawof"), // tào with breve is invalid
+];
+
+const VNI_INVALID_BREVE_DIPHTHONG: &[(&str, &str)] = &[
+    // a8 + vowel → should NOT transform
+    ("a8i", "a8i"),   // ăi is invalid
+    ("a8o", "a8o"),   // ăo is invalid
+    ("a8u", "a8u"),   // ău is invalid
+    ("a8y", "a8y"),   // ăy is invalid
+    ("ta8i", "ta8i"), // tăi is invalid
+    ("ta8o", "ta8o"), // tăo is invalid
+    ("ma8i", "ma8i"), // măi is invalid
+    ("la8i", "la8i"), // lăi is invalid
+];
+
+// ============================================================
+// ENGLISH WORDS WITH AW PATTERN (should NOT transform)
+// ============================================================
+//
+// Common English words containing "aw" should stay as-is
+// because they don't form valid Vietnamese syllables.
+
+const TELEX_ENGLISH_AW_WORDS: &[(&str, &str)] = &[
+    // Common English words with "aw"
+    ("raw", "raw"),           // raw data
+    ("saw", "saw"),           // I saw
+    ("law", "law"),           // law firm
+    ("draw", "draw"),         // draw a picture
+    ("straw", "straw"),       // drinking straw
+    ("claw", "claw"),         // cat's claw
+    ("flaw", "flaw"),         // design flaw
+    ("jaw", "jaw"),           // jaw bone
+    ("paw", "paw"),           // dog's paw
+    ("craw", "craw"),         // in my craw
+    ("gnaw", "gnaw"),         // gnaw at
+    ("thaw", "thaw"),         // thaw frozen
+    ("outlaw", "outlaw"),     // outlaw
+    ("jigsaw", "jigsaw"),     // jigsaw puzzle
+    ("seesaw", "seesaw"),     // seesaw
+    ("coleslaw", "coleslaw"), // coleslaw
+    // Capital letters
+    ("Raw", "Raw"),
+    ("LAW", "LAW"),
+    ("Draw", "Draw"),
+    ("DRAW", "DRAW"),
+    // Mixed with Vietnamese - space separates words
+    ("raw data", "raw data"),
+    ("raw vieetj", "raw việt"), // "raw" stays, "việt" transforms
+];
+
+// ============================================================
+// EDGE CASES: PARTIAL WORDS / INTERMEDIATE STATES
+// ============================================================
+//
+// When typing incrementally, intermediate states should behave correctly.
+
+const TELEX_BREVE_EDGE_CASES: &[(&str, &str)] = &[
+    // When user types "tram" then "w" to make "trawm" → "trăm"
+    // But "traw" alone should stay as "traw" until final consonant added
+    ("traw", "traw"),  // Intermediate: no final consonant yet
+    ("trawm", "trăm"), // Complete: has final consonant → valid
+    ("naw", "naw"),    // Intermediate: no final consonant
+    ("nawm", "năm"),   // Complete: has final consonant → valid
+    ("raw", "raw"),    // No valid completion possible with just vowel
+    ("rawng", "răng"), // Complete: răng is valid
+    // OA patterns (for contrast - these should transform)
+    ("hoa", "hoa"),  // valid open syllable
+    ("hoaf", "hoà"), // valid with tone
+    // Edge: aw after ou (invalid pattern remains)
+    ("awng", "ăng"), // ăng is valid (final consonant)
+];
+
+// ============================================================
+// TEST FUNCTIONS
+// ============================================================
+
+#[test]
+fn telex_invalid_breve_open_syllable() {
+    telex(TELEX_INVALID_BREVE_OPEN);
+}
+
+#[test]
+fn vni_invalid_breve_open_syllable() {
+    vni(VNI_INVALID_BREVE_OPEN);
+}
+
+#[test]
+fn telex_valid_breve_with_final() {
+    telex(TELEX_VALID_BREVE);
+}
+
+#[test]
+fn vni_valid_breve_with_final() {
+    vni(VNI_VALID_BREVE);
+}
+
+#[test]
+fn telex_invalid_breve_diphthong() {
+    telex(TELEX_INVALID_BREVE_DIPHTHONG);
+}
+
+#[test]
+fn vni_invalid_breve_diphthong() {
+    vni(VNI_INVALID_BREVE_DIPHTHONG);
+}
+
+#[test]
+fn telex_english_aw_words() {
+    telex(TELEX_ENGLISH_AW_WORDS);
+}
+
+#[test]
+fn telex_breve_edge_cases() {
+    telex(TELEX_BREVE_EDGE_CASES);
+}
