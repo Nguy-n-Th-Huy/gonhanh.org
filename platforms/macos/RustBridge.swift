@@ -208,6 +208,9 @@ private struct ImeResult {
 @_silgen_name("ime_method") private func ime_method(_ method: UInt8)
 @_silgen_name("ime_enabled") private func ime_enabled(_ enabled: Bool)
 @_silgen_name("ime_skip_w_shortcut") private func ime_skip_w_shortcut(_ skip: Bool)
+@_silgen_name("ime_esc_restore") private func ime_esc_restore(_ enabled: Bool)
+@_silgen_name("ime_free_tone") private func ime_free_tone(_ enabled: Bool)
+@_silgen_name("ime_modern") private func ime_modern(_ modern: Bool)
 @_silgen_name("ime_clear") private func ime_clear()
 @_silgen_name("ime_free") private func ime_free(_ result: UnsafeMutablePointer<ImeResult>?)
 
@@ -260,6 +263,24 @@ class RustBridge {
     static func setSkipWShortcut(_ skip: Bool) {
         ime_skip_w_shortcut(skip)
         Log.info("Skip W shortcut: \(skip)")
+    }
+
+    /// Set whether ESC key restores raw ASCII input
+    static func setEscRestore(_ enabled: Bool) {
+        ime_esc_restore(enabled)
+        Log.info("ESC restore: \(enabled)")
+    }
+
+    /// Set whether to enable free tone placement (skip validation)
+    static func setFreeTone(_ enabled: Bool) {
+        ime_free_tone(enabled)
+        Log.info("Free tone: \(enabled)")
+    }
+
+    /// Set whether to use modern orthography for tone placement
+    static func setModernTone(_ modern: Bool) {
+        ime_modern(modern)
+        Log.info("Modern tone: \(modern)")
     }
 
     static func clearBuffer() { ime_clear() }

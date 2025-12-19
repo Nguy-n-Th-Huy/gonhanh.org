@@ -75,6 +75,8 @@ enum SettingsKey {
     static let perAppModes = "gonhanh.perAppModes"
     static let shortcuts = "gonhanh.shortcuts"
     static let autoWShortcut = "gonhanh.autoWShortcut"
+    static let escRestore = "gonhanh.escRestore"
+    static let modernTone = "gonhanh.modernTone"
 }
 
 // MARK: - Keyboard Shortcut Model
