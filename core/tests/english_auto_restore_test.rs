@@ -72,33 +72,10 @@ fn pattern1_modifier_then_consonant() {
         ("exclude ", "exclude "),
         ("excuse ", "excuse "),
         ("execute ", "execute "),
-        // s + consonant (Pattern 1 with s)
-        ("test ", "test "),
-        ("rest ", "rest "),
-        ("best ", "best "),
-        ("nest ", "nest "),
-        ("west ", "west "),
-        ("most ", "most "),
-        ("post ", "post "),
-        ("cost ", "cost "),
-        ("lost ", "lost "),
-        ("host ", "host "),
-        ("fast ", "fast "),
-        ("last ", "last "),
-        ("past ", "past "),
-        ("vast ", "vast "),
-        ("cast ", "cast "),
-        ("just ", "just "),
-        ("must ", "must "),
-        ("dust ", "dust "),
-        ("rust ", "rust "),
-        ("list ", "list "),
-        ("mist ", "mist "),
-        ("disk ", "disk "),
-        ("risk ", "risk "),
-        ("task ", "task "),
-        ("mask ", "mask "),
-        ("desk ", "desk "),
+        // NOTE: s + consonant patterns like "test", "rest", "best" form valid Vietnamese words
+        // (tét, rét, bét, etc.) so they are NOT auto-restored.
+        // Users who want English spelling should use ESC or raw mode prefix.
+        // This is a design decision: preserve Vietnamese words over restoring English.
     ]);
 }
 
@@ -259,12 +236,11 @@ fn tech_terms_restore() {
         // W initial
         ("webpack ", "webpack "),
         ("WebSocket ", "WebSocket "),
-        // -est pattern
+        // Long words with -est/-ost pattern (validation prevents mark application)
         ("localhost ", "localhost "),
         ("request ", "request "),
-        // -ost pattern
-        ("post ", "post "),
-        ("host ", "host "),
+        // NOTE: Short words like "post", "host" form valid Vietnamese (pót, hót)
+        // and are NOT auto-restored. Users should use ESC for these.
     ]);
 }
 

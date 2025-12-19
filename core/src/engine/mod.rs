@@ -141,8 +141,6 @@ pub struct Engine {
     shortcuts: ShortcutTable,
     /// Raw keystroke history for ESC restore (key, caps)
     raw_input: Vec<(u16, bool)>,
-    /// Raw mode: skip Vietnamese transforms after prefix chars (@ # $ ^ : > ?)
-    raw_mode: bool,
     /// True if current word has non-letter characters before letters
     /// Used to prevent false shortcut matches (e.g., "149k" should not match "k")
     has_non_letter_prefix: bool,
@@ -175,7 +173,6 @@ impl Engine {
             last_transform: None,
             shortcuts: ShortcutTable::with_defaults(),
             raw_input: Vec::with_capacity(64),
-            raw_mode: false,
             has_non_letter_prefix: false,
             skip_w_shortcut: false,
             word_history: WordHistory::new(),
@@ -264,14 +261,6 @@ impl Engine {
             return Result::none();
         }
 
-        // TEMP DISABLED: Raw mode prefix detection
-        // Raw mode prefix detection: when buffer is empty and user types @ # $ ^ : > ?
-        // Enable raw mode to skip Vietnamese transforms for subsequent letters
-        // if self.buf.is_empty() && Self::is_raw_prefix(key, shift) {
-        //     self.raw_mode = true;
-        //     return Result::none();
-        // }
-
         // Check for word boundary shortcuts ONLY on SPACE
         // Also auto-restore invalid Vietnamese to raw English
         if key == keys::SPACE {
@@ -359,12 +348,6 @@ impl Engine {
 
     /// Main processing pipeline - pattern-based
     fn process(&mut self, key: u16, caps: bool, shift: bool) -> Result {
-        // Raw mode: skip all Vietnamese transforms, just pass through letters
-        // Enabled by typing @ # $ ^ : > ? at start of input (like JOKey)
-        if self.raw_mode {
-            return self.handle_normal_letter(key, caps);
-        }
-
         let m = input::get(self.method);
 
         // In VNI mode, if Shift is pressed with a number key, skip all modifiers
@@ -1400,6 +1383,42 @@ impl Engine {
                     return self.revert_w_as_vowel_transforms();
                 }
             }
+
+            // Auto-restore when consonant after mark creates English pattern
+            // Example: "tex" → "tẽ", then 't' typed → "tẽt" is invalid → restore "text"
+            // Check: buffer has mark transforms AND new consonant creates invalid pattern
+            //
+            // IMPORTANT: Only trigger when consonant immediately follows a marked character
+            // This catches: "tex" + 't' where 'ẽ' (marked) is followed by 't'
+            // But skips: "việt" + 'n' where 't' (plain) is followed by 'n'
+            // The second case happens after restore_word() when extending a word.
+            if keys::is_consonant(key) && self.buf.len() >= 2 {
+                // Check if consonant immediately follows a marked character
+                if let Some(prev_char) = self.buf.get(self.buf.len() - 2) {
+                    let prev_has_mark = prev_char.mark > 0 || prev_char.tone > 0;
+                    if prev_has_mark {
+                        if let Some(raw_chars) = self.should_auto_restore() {
+                            // Restore to raw English
+                            // Note: The new consonant is already in the buffer (added at line 1291)
+                            // but NOT yet displayed on screen. So backspace = buf.len() - 1.
+                            let backspace = (self.buf.len() - 1) as u8;
+
+                            // Repopulate buffer with restored content (plain chars, no marks)
+                            // This allows subsequent typing to build on the restored word
+                            // Example: "express" - after "exp" is restored, "ress" continues
+                            // and buffer contains full "express" for final validation
+                            self.buf.clear();
+                            for &(key, caps) in &self.raw_input {
+                                self.buf.push(Char::new(key, caps));
+                            }
+                            // Keep raw_input for continued tracking
+
+                            self.last_transform = None;
+                            return Result::send(backspace, &raw_chars);
+                        }
+                    }
+                }
+            }
         } else {
             // Non-letter character (number, symbol, etc.)
             // Mark that this word has non-letter prefix to prevent false shortcut matches
@@ -1547,7 +1566,6 @@ impl Engine {
         self.buf.clear();
         self.raw_input.clear();
         self.last_transform = None;
-        self.raw_mode = false;
         self.has_non_letter_prefix = false;
         self.pending_breve_pos = None;
     }
@@ -1578,17 +1596,31 @@ impl Engine {
         }
 
         // Check if any transforms were applied
-        let has_transforms = self
-            .buf
-            .iter()
-            .any(|c| c.tone > 0 || c.mark > 0 || c.stroke);
-        if !has_transforms {
+        // - Marks (sắc, huyền, hỏi, ngã, nặng): indicate Vietnamese typing intent
+        // - Vowel tones (â, ê, ô, ư, ă): indicate Vietnamese typing intent
+        // - Stroke (đ): included for longer words that are structurally invalid
+        let has_marks_or_tones = self.buf.iter().any(|c| c.tone > 0 || c.mark > 0);
+        let has_stroke = self.buf.iter().any(|c| c.stroke);
+
+        // If no transforms at all, nothing to restore
+        if !has_marks_or_tones && !has_stroke {
             return None;
         }
 
         // Check 1: If buffer_keys is structurally invalid Vietnamese → RESTORE
         let buffer_keys: Vec<u16> = self.buf.iter().map(|c| c.key).collect();
-        if !is_valid(&buffer_keys) {
+        let is_structurally_valid = is_valid(&buffer_keys);
+
+        if !is_structurally_valid {
+            // For stroke-only transforms (no marks/tones), only restore if word is long enough
+            // Short words like "đd" from "ddd" should stay; long invalid words like "đealine" should restore
+            if has_stroke && !has_marks_or_tones {
+                // Stroke-only: restore if word has 4+ chars (likely English like "deadline")
+                // Keep short words (e.g., "đd" from "ddd")
+                if self.buf.len() < 4 {
+                    return None;
+                }
+            }
             return self.build_raw_chars();
         }
 
@@ -1661,9 +1693,28 @@ impl Engine {
             // Pattern 1: Modifier followed by consonant → English
             // Example: "text" has X followed by T, "expect" has X followed by P
             // Counter-example: "muwowjt" has J followed by T (Vietnamese - multiple vowels)
+            // Counter-example: "dojdc" = D+O+J+D+C (Vietnamese "đọc" - j + consonants is valid)
             if i + 1 < self.raw_input.len() {
                 let (next_key, _) = self.raw_input[i + 1];
                 if keys::is_consonant(next_key) {
+                    // Heuristic: In Vietnamese, finals combine differently with tones:
+                    // - nặng (j) + consonant is common: học, bọc, bật, cặp, đọc, etc.
+                    // - sắc (s) + consonant is common: bức, đất, ất, etc.
+                    // - huyền (f) + consonant is common: làm, hàng, dùng, vàng, etc.
+                    // - ngã (x) + consonant is RARE in Vietnamese
+                    // - hỏi (r) + consonant is RARE in Vietnamese
+                    //
+                    // Skip restore if modifier is nặng (j), sắc (s), or huyền (f)
+                    // This handles:
+                    // - "dojc" → "dọc" (j + final c)
+                    // - "dojdc" → "đọc" (j + d for stroke + final c)
+                    // - "lafm" → "làm" (f + final m)
+                    let is_likely_vietnamese_mark =
+                        key == keys::J || key == keys::S || key == keys::F;
+                    if is_likely_vietnamese_mark {
+                        continue;
+                    }
+
                     // Case 1a: More letters after the consonant → definitely English
                     // Example: "expect" = E+X+P+E+C+T (X followed by P, then more)
                     if i + 2 < self.raw_input.len() {
@@ -1672,16 +1723,6 @@ impl Engine {
                     // Case 1b: Final consonant but only 1 vowel before modifier → likely English
                     // Example: "text" = T+E+X+T (only 1 vowel E before X)
                     // Counter: "muwowjt" = M+U+W+O+W+J+T (2 vowels with W modifiers)
-                    // Counter: "ddojc" = D+D+O+J+C (dd→đ, so it's Vietnamese "đọc")
-                    //
-                    // Skip this check if buffer has stroke applied (dd→đ was used)
-                    // This indicates intentional Vietnamese typing with Telex modifiers
-                    let has_stroke = self.buf.iter().any(|c| c.stroke);
-                    if has_stroke {
-                        // Vietnamese word with đ - not English
-                        continue;
-                    }
-
                     let vowels_before: usize = (0..i)
                         .filter(|&j| keys::is_vowel(self.raw_input[j].0))
                         .count();
@@ -1868,7 +1909,7 @@ impl Engine {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::{raw_mode, telex, vni};
+    use crate::utils::{telex, vni};
 
     const TELEX_BASIC: &[(&str, &str)] = &[
         ("as", "á"),
@@ -1886,6 +1927,8 @@ mod tests {
         ("ow", "ơ"),
         ("uw", "ư"),
         ("dd", "đ"),
+        // Mark after consonant
+        ("tex", "tẽ"), // t + e + x(ngã) → tẽ
     ];
 
     const VNI_BASIC: &[(&str, &str)] = &[
@@ -1926,19 +1969,8 @@ mod tests {
         ("d9\x1b", "d9"),         // đ → d9
     ];
 
-    // Raw mode test cases: typing prefix (@, #, :, /) at start skips Vietnamese transforms
-    // Like JOKey's feature: @gox → @gox (NOT @gõ)
-    const RAW_MODE_PREFIX: &[(&str, &str)] = &[
-        ("@gox", "@gox"),         // @ prefix: "gox" stays raw
-        ("@text", "@text"),       // @ prefix: "text" stays raw
-        ("#hashtag", "#hashtag"), // # prefix
-        (":smile:", ":smile:"),   // : prefix (emoji shortcut)
-        ("/command", "/command"), // / prefix (slash command)
-    ];
-
-    // Normal mode (without prefix): Vietnamese transforms apply
-    // Note: "text" is no longer included since it's now correctly detected as English
-    const RAW_MODE_NORMAL: &[(&str, &str)] = &[
+    // Normal Vietnamese transforms apply
+    const TELEX_NORMAL: &[(&str, &str)] = &[
         ("gox", "gõ"),      // Without prefix: "gox" → "gõ"
         ("tas", "tá"),      // Without prefix: Vietnamese transforms (s adds sắc)
         ("vieejt", "việt"), // Normal Vietnamese typing
@@ -1970,14 +2002,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // TEMP DISABLED: raw mode prefix detection
-    fn test_raw_mode_prefix() {
-        raw_mode(RAW_MODE_PREFIX);
-    }
-
-    #[test]
-    fn test_raw_mode_normal() {
-        // Without prefix, Vietnamese transforms should still apply
-        telex(RAW_MODE_NORMAL);
+    fn test_telex_normal() {
+        telex(TELEX_NORMAL);
     }
 }

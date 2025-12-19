@@ -332,7 +332,7 @@ pub fn is_valid_for_transform(buffer_keys: &[u16]) -> bool {
 /// Returns true if the pattern suggests foreign word input.
 pub fn is_foreign_word_pattern(
     buffer_keys: &[u16],
-    buffer_tones: &[u8],
+    _buffer_tones: &[u8],
     modifier_key: u16,
 ) -> bool {
     let syllable = parse(buffer_keys);
@@ -390,35 +390,13 @@ pub fn is_foreign_word_pattern(
         }
     }
 
-    // Check 4: Consonant + E + 'x' modifier → likely English "-ex-" pattern
-    // "text", "next", "context", "complex", "reflex", "index", "latex"
+    // Check 4: REMOVED - Was too aggressive
+    // Previously blocked "tex" → "tẽ" treating it as English "-ex-" pattern.
+    // Now we allow "tex" → "tẽ" (valid Vietnamese) and rely on auto-restore
+    // when additional consonants are typed (e.g., "text" → "text").
     //
-    // The "-ex-" pattern (consonant + vowel E + consonant X) is extremely common in English.
-    // Vietnamese doesn't have the "ex" combination - X is not a valid final consonant.
-    //
-    // NOTE: Standalone "e" + "x" → "ẽ" is allowed because it's valid Vietnamese.
-    // Words like "express", "expect" that start with "ex-" are handled by the
-    // auto-restore feature (Check 5 or try_normal detection).
-    //
-    // EXCEPTION: If E already has circumflex (from "ee" → "ê" in Telex), this is
-    // Vietnamese input (e.g., "leex" → "lễ"), NOT English "lex".
-    //
-    // Pattern: initial + single plain vowel E (no circumflex) + modifier X
-    if !syllable.initial.is_empty()
-        && syllable.vowel.len() == 1
-        && syllable.final_c.is_empty()
-        && modifier_key == keys::X
-    {
-        let vowel_idx = syllable.vowel[0];
-        let vowel = buffer_keys[vowel_idx];
-        let vowel_tone = buffer_tones.get(vowel_idx).copied().unwrap_or(0);
-        // Only treat as English if E is plain (no circumflex)
-        // "le" + x → likely English "lex"
-        // "lê" + x → Vietnamese "lễ" (E has circumflex from "ee")
-        if vowel == keys::E && vowel_tone != tone::CIRCUMFLEX {
-            return true;
-        }
-    }
+    // The auto-restore logic in handle_normal_letter will detect invalid
+    // Vietnamese patterns like "tẽt" and restore to "text".
 
     // Check 5: Invalid final consonant + mark modifier → likely English
     // When buffer has vowel + INVALID final consonant pattern

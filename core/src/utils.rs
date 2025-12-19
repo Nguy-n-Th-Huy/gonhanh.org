@@ -387,15 +387,6 @@ mod test_utils {
         }
         screen
     }
-
-    /// Run raw mode test cases (with shift support for prefix chars)
-    pub fn raw_mode(cases: &[(&str, &str)]) {
-        for (input, expected) in cases {
-            let mut e = Engine::new();
-            let result = type_word_ext(&mut e, input);
-            assert_eq!(result, *expected, "[RawMode] '{}' → '{}'", input, result);
-        }
-    }
 }
 
 // Re-export test utilities for use in other test modules
