@@ -173,6 +173,10 @@ pub struct Engine {
     /// Breve on 'a' in open syllables (like "raw") is invalid Vietnamese
     /// We defer applying breve until a valid final consonant is typed
     pending_breve_pos: Option<usize>,
+    /// Tracks if stroke was reverted in current word (ddd → dd)
+    /// When true, subsequent 'd' keys are treated as normal letters, not stroke triggers
+    /// This prevents "ddddd" from oscillating between đ and dd states
+    stroke_reverted: bool,
     /// Tracks if a mark was reverted in current word
     /// Used by auto-restore to detect words like "issue", "bass" that need restoration
     had_mark_revert: bool,
@@ -202,6 +206,7 @@ impl Engine {
             word_history: WordHistory::new(),
             spaces_after_commit: 0,
             pending_breve_pos: None,
+            stroke_reverted: false,
             had_mark_revert: false,
         }
     }
@@ -396,6 +401,9 @@ impl Engine {
             self.buf.pop();
             self.raw_input.pop();
             self.last_transform = None;
+            // Reset stroke_reverted on backspace so user can re-trigger stroke
+            // e.g., "ddddd" → "dddd", then backspace×3 → "d", then "d" → "đ"
+            self.stroke_reverted = false;
             return Result::none();
         }
 
@@ -611,6 +619,12 @@ impl Engine {
     /// In VNI mode, '9' is always an intentional stroke command (not a letter), so
     /// delayed stroke is allowed (e.g., "duong9" → "đuong").
     fn try_stroke(&mut self, key: u16) -> Option<Result> {
+        // If stroke was already reverted in this word (ddd → dd), skip further stroke attempts
+        // This prevents "ddddd" from oscillating and ensures subsequent 'd's are just letters
+        if self.stroke_reverted && key == keys::D {
+            return None;
+        }
+
         // Check for stroke revert first: ddd → dd
         // If last transform was stroke and same key pressed again, revert the stroke
         if let Some(Transform::Stroke(last_key)) = self.last_transform {
@@ -624,7 +638,11 @@ impl Engine {
                     // Add another 'd' as normal char
                     self.buf.push(Char::new(key, false));
                     self.last_transform = None;
-                    return Some(self.rebuild_from(pos));
+                    // Mark that stroke was reverted - subsequent 'd' keys will be normal letters
+                    self.stroke_reverted = true;
+                    // Use rebuild_from_after_insert because the new 'd' was just pushed
+                    // and hasn't been displayed on screen yet
+                    return Some(self.rebuild_from_after_insert(pos));
                 }
             }
         }
@@ -1925,6 +1943,7 @@ impl Engine {
         self.last_transform = None;
         self.has_non_letter_prefix = false;
         self.pending_breve_pos = None;
+        self.stroke_reverted = false;
         self.had_mark_revert = false;
     }
 

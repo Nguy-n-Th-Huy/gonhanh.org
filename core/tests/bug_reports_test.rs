@@ -110,3 +110,81 @@ fn current_uaw() {
     let result = type_word(&mut e, "uaw");
     println!("'uaw' -> '{}'", result);
 }
+
+// =============================================================================
+// BUG 6: " ddddd" (space + ddddd) -> deletes the space
+// Current: space is deleted
+// Expected: " dddd" (space preserved)
+// =============================================================================
+
+#[test]
+fn bug6_ddddd_deletes_space() {
+    let mut e = Engine::new();
+    let result = type_word(&mut e, " ddddd");
+    println!("' ddddd' -> '{}' (expected: ' dddd')", result);
+    assert_eq!(
+        result, " dddd",
+        "Space should be preserved when typing ' ddddd'"
+    );
+}
+
+#[test]
+fn ddddd_behavior() {
+    let mut e = Engine::new();
+
+    // Debug step by step
+    use gonhanh_core::engine::Action;
+
+    let mut screen = String::new();
+    let inputs = ['d', 'd', 'd', 'd', 'd'];
+
+    for c in inputs {
+        let key = gonhanh_core::utils::char_to_key(c);
+        let r = e.on_key(key, false, false);
+
+        if r.action == Action::Send as u8 {
+            println!(
+                "Key '{}': backspace={}, output='{}' (screen before: '{}')",
+                c,
+                r.backspace,
+                (0..r.count as usize)
+                    .filter_map(|i| char::from_u32(r.chars[i]))
+                    .collect::<String>(),
+                screen
+            );
+            for _ in 0..r.backspace {
+                screen.pop();
+            }
+            for i in 0..r.count as usize {
+                if let Some(ch) = char::from_u32(r.chars[i]) {
+                    screen.push(ch);
+                }
+            }
+        } else {
+            println!("Key '{}': passthrough (screen before: '{}')", c, screen);
+            screen.push(c);
+        }
+        println!("  -> screen after: '{}'", screen);
+    }
+
+    println!("\nFinal: 'ddddd' -> '{}' (expected: 'dddd')", screen);
+    assert_eq!(screen, "dddd", "'ddddd' should produce 'dddd'");
+}
+
+// =============================================================================
+// BUG 7: After "ddddd" → "dddd", backspace to "d", then "d" should produce "đ"
+// The stroke_reverted flag should be reset on backspace
+// =============================================================================
+
+#[test]
+fn bug7_backspace_resets_stroke_reverted() {
+    // Type "ddddd" → "dddd", then backspace 3 times → "d", then type "d" → should be "đ"
+    // Note: '<' is mapped to DELETE key in char_to_key
+    let mut e = Engine::new();
+    let result = type_word(&mut e, "ddddd<<<d");
+    println!(
+        "'ddddd' + backspace×3 + 'd' -> '{}' (expected: 'đ')",
+        result
+    );
+    assert_eq!(result, "đ", "After backspace, dd should produce đ again");
+}
