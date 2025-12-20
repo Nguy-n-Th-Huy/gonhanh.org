@@ -734,17 +734,11 @@ func setupShortcutObserver() {
 }
 
 private func matchesToggleShortcut(keyCode: UInt16, flags: CGEventFlags) -> Bool {
-    guard currentShortcut.keyCode != 0xFFFF, keyCode == currentShortcut.keyCode else { return false }
-    let saved = CGEventFlags(rawValue: currentShortcut.modifiers)
-    // Exact match: only the saved modifiers should be pressed, no extras
-    // e.g., Ctrl+Space should NOT match Ctrl+Option+Space
-    return flags.intersection(kModifierMask) == saved.intersection(kModifierMask)
+    return currentShortcut.matches(keyCode: keyCode, flags: flags)
 }
 
 private func matchesModifierOnlyShortcut(flags: CGEventFlags) -> Bool {
-    guard currentShortcut.keyCode == 0xFFFF else { return false }
-    let saved = CGEventFlags(rawValue: currentShortcut.modifiers)
-    return flags.intersection(kModifierMask) == saved.intersection(kModifierMask)
+    return currentShortcut.matchesModifierOnly(flags: flags)
 }
 
 private func keyboardCallback(

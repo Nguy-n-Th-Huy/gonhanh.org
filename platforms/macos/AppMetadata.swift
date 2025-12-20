@@ -180,6 +180,32 @@ struct KeyboardShortcut: Codable, Equatable {
 
     /// Check if this shortcut is modifier-only (no character key)
     var isModifierOnly: Bool { keyCode == 0xFFFF }
+
+    /// Modifier mask for matching shortcuts
+    private static let modifierMask: CGEventFlags = [.maskControl, .maskAlternate, .maskShift, .maskCommand]
+
+    /// Check if given key event matches this shortcut
+    /// - Parameters:
+    ///   - keyCode: The key code from the event
+    ///   - flags: The modifier flags from the event
+    /// - Returns: true if exact match (same key + exact same modifiers, no extras)
+    func matches(keyCode pressedKeyCode: UInt16, flags: CGEventFlags) -> Bool {
+        // For key+modifier shortcuts: check keyCode and exact modifier match
+        guard !isModifierOnly else { return false }
+        guard pressedKeyCode == keyCode else { return false }
+        let savedFlags = CGEventFlags(rawValue: modifiers)
+        // Exact match: only the saved modifiers should be pressed, no extras
+        return flags.intersection(Self.modifierMask) == savedFlags.intersection(Self.modifierMask)
+    }
+
+    /// Check if given modifier flags match this modifier-only shortcut
+    /// - Parameter flags: The modifier flags from the event
+    /// - Returns: true if exact match (same modifiers, no extras)
+    func matchesModifierOnly(flags: CGEventFlags) -> Bool {
+        guard isModifierOnly else { return false }
+        let savedFlags = CGEventFlags(rawValue: modifiers)
+        return flags.intersection(Self.modifierMask) == savedFlags.intersection(Self.modifierMask)
+    }
 }
 
 // MARK: - Input Mode
