@@ -488,10 +488,8 @@ class RustBridge {
     }
 
     static func setEnabled(_ enabled: Bool) {
-        // Only enable for Latin keyboards (ABC, US, British, etc.), always allow disable
-        let actualEnabled = enabled && InputSourceObserver.shared.isAllowedInputSource
-        ime_enabled(actualEnabled)
-        Log.info("Enabled: \(actualEnabled) (requested: \(enabled), allowed: \(InputSourceObserver.shared.isAllowedInputSource))")
+        ime_enabled(enabled)
+        Log.info("Enabled: \(enabled)")
     }
 
     /// Set whether to skip w→ư shortcut in Telex mode

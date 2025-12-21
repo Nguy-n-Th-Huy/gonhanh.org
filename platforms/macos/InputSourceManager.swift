@@ -1,14 +1,8 @@
 import Foundation
 import Carbon.HIToolbox
 
-/// Input sources that show V/E icon (Latin-based keyboards)
-private let allowedInputSources: Set<String> = [
-    "com.apple.keylayout.ABC",
-    "com.apple.keylayout.US",
-    "com.apple.keylayout.USInternational-PC",
-    "com.apple.keylayout.British",
-    "com.apple.keylayout.Australian"
-]
+/// The only input source that allows Gõ Nhanh
+private let allowedInputSource = "com.apple.keylayout.ABC"
 
 // MARK: - Input Source Observer
 
@@ -72,11 +66,11 @@ final class InputSourceObserver {
         isAllowedInputSource = isInputSourceAllowed(currentId)
 
         if isAllowedInputSource {
-            // Latin keyboard: restore user preference
+            // Restore user preference
             let userEnabled = UserDefaults.standard.object(forKey: "gonhanh.enabled") as? Bool ?? true
             RustBridge.setEnabled(userEnabled)
         } else {
-            // Non-Latin keyboard (Japanese, Chinese, etc.): force disable
+            // Force disable
             RustBridge.setEnabled(false)
         }
 
@@ -85,7 +79,7 @@ final class InputSourceObserver {
     }
 
     private func isInputSourceAllowed(_ id: String) -> Bool {
-        allowedInputSources.contains(id)
+        id == allowedInputSource
     }
 
     private func getDisplayChar(from source: TISInputSource, id: String) -> String {
