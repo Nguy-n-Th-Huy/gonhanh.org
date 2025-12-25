@@ -428,8 +428,10 @@ private struct ImeResult {
     var action: UInt8
     var backspace: UInt8
     var count: UInt8
-    var _pad: UInt8
+    var flags: UInt8  // bit 0: key_consumed
 }
+
+private let FLAG_KEY_CONSUMED: UInt8 = 0x01  // Key was consumed by shortcut, don't pass through
 
 @_silgen_name("ime_init") private func ime_init()
 @_silgen_name("ime_key_ext") private func ime_key_ext(_ key: UInt16, _ caps: Bool, _ ctrl: Bool, _ shift: Bool) -> UnsafeMutablePointer<ImeResult>?
@@ -468,7 +470,8 @@ class RustBridge {
         Log.info("Engine initialized")
     }
 
-    static func processKey(keyCode: UInt16, caps: Bool, ctrl: Bool, shift: Bool = false) -> (Int, [Character])? {
+    /// Process a keystroke. Returns (backspace, chars, keyConsumed) or nil if no action.
+    static func processKey(keyCode: UInt16, caps: Bool, ctrl: Bool, shift: Bool = false) -> (Int, [Character], Bool)? {
         guard isInitialized, let ptr = ime_key_ext(keyCode, caps, ctrl, shift) else { return nil }
         defer { ime_free(ptr) }
 
@@ -480,7 +483,8 @@ class RustBridge {
                 (0..<Int(r.count)).compactMap { Unicode.Scalar(bound[$0]).map(Character.init) }
             }
         }
-        return (Int(r.backspace), chars)
+        let keyConsumed = (r.flags & FLAG_KEY_CONSUMED) != 0
+        return (Int(r.backspace), chars, keyConsumed)
     }
 
     static func setMethod(_ method: Int) {
@@ -1032,7 +1036,7 @@ private func keyboardCallback(
         }
 
         // First try Rust engine (handles immediate backspace-after-space)
-        if let (bs, chars) = RustBridge.processKey(keyCode: keyCode, caps: caps, ctrl: ctrl, shift: shift) {
+        if let (bs, chars, _) = RustBridge.processKey(keyCode: keyCode, caps: caps, ctrl: ctrl, shift: shift) {
             let str = String(chars)
             Log.transform(bs, str)
             sendReplacement(backspace: bs, chars: chars, method: method, delays: delays, proxy: proxy)
@@ -1059,18 +1063,15 @@ private func keyboardCallback(
         skipWordRestoreAfterClick = false
     }
 
-    if let (bs, chars) = RustBridge.processKey(keyCode: keyCode, caps: caps, ctrl: ctrl, shift: shift) {
-        let str = String(chars)
-        Log.transform(bs, str)
+    if let (bs, chars, keyConsumed) = RustBridge.processKey(keyCode: keyCode, caps: caps, ctrl: ctrl, shift: shift) {
+        Log.transform(bs, String(chars))
         sendReplacement(backspace: bs, chars: chars, method: method, delays: delays, proxy: proxy)
 
-        // If this was a break key (punctuation), pass it through after auto-restore
-        // The engine's auto-restore doesn't include the break character
-        // EXCEPTION: Space is already included by engine's try_auto_restore_on_space()
-        if keyCode != KeyCode.space && isBreakKey(keyCode, shift: shift) {
-            return Unmanaged.passUnretained(event)
-        }
-        return nil
+        // Pass through break keys (punctuation) for auto-restore, except:
+        // - Space: already handled by engine
+        // - Consumed keys: used by shortcuts (e.g., ">" in "->")
+        let shouldPassThrough = isBreakKey(keyCode, shift: shift) && keyCode != KeyCode.space && !keyConsumed
+        return shouldPassThrough ? Unmanaged.passUnretained(event) : nil
     }
 
     // For selectAll method: handle pass-through keys (space, punctuation, etc.)
