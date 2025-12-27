@@ -139,7 +139,7 @@ jobs:
           codesign -vvv --deep --strict "$APP"
           echo "Signature verified successfully!"
 
-      - name: Submit Notarization (async)
+      - name: Submit Notarization & Wait (30 min timeout)
         if: ${{ env.APPLE_SIGNING_IDENTITY != '' }}
         id: notarize
         env:
@@ -153,7 +153,7 @@ jobs:
           echo "Creating ZIP for notarization..."
           ditto -c -k --keepParent "$APP" "GoNhanh-notarize.zip"
 
-          echo "Submitting to Apple for notarization (async, not waiting)..."
+          echo "Submitting to Apple for notarization..."
           xcrun notarytool submit "GoNhanh-notarize.zip" \
             --apple-id "$APPLE_ID" \
             --password "$APPLE_APP_PASSWORD" \
@@ -163,22 +163,61 @@ jobs:
 
           SUBMISSION_ID=$(jq -r '.id' notarization-result.json)
           echo "submission_id=$SUBMISSION_ID" >> $GITHUB_OUTPUT
-          echo "✅ Submitted for notarization: $SUBMISSION_ID"
-          echo "::notice::Notarization submitted. Run 'notarize-complete' workflow when Apple finishes processing."
+          echo "✅ Submitted: $SUBMISSION_ID"
 
-          # Cleanup zip (keep result for artifact)
+          # Wait up to 30 minutes for approval
+          echo "Waiting for Apple approval (max 30 min)..."
+          MAX_ATTEMPTS=60  # 60 * 30s = 30 min
+          ATTEMPT=0
+          STAPLED=false
+
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            sleep 30
+
+            STATUS=$(xcrun notarytool info "$SUBMISSION_ID" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_APP_PASSWORD" \
+              --team-id "$APPLE_TEAM_ID" \
+              --output-format json 2>/dev/null | jq -r '.status' || echo "error")
+
+            echo "[$ATTEMPT/$MAX_ATTEMPTS] Status: $STATUS"
+
+            case "$STATUS" in
+              "Accepted")
+                echo "✅ Notarization accepted! Stapling..."
+                xcrun stapler staple "$APP"
+                STAPLED=true
+                break
+                ;;
+              "Invalid"|"Rejected")
+                echo "❌ Notarization rejected"
+                break
+                ;;
+              "In Progress")
+                continue
+                ;;
+            esac
+          done
+
+          echo "stapled=$STAPLED" >> $GITHUB_OUTPUT
+
+          if [ "$STAPLED" = "false" ]; then
+            echo "::warning::Notarization not completed within 30 min. Releasing unstapled DMG. Background job will update later."
+          fi
+
           rm -f "GoNhanh-notarize.zip"
 
       - name: Upload Notarization Info
-        if: ${{ env.APPLE_SIGNING_IDENTITY != '' }}
+        if: ${{ env.APPLE_SIGNING_IDENTITY != '' && steps.notarize.outputs.stapled == 'false' }}
         uses: actions/upload-artifact@v4
         with:
           name: notarization-info
           path: platforms/macos/notarization-result.json
           retention-days: 30
 
-      - name: Upload Signed App (for stapling later)
-        if: ${{ env.APPLE_SIGNING_IDENTITY != '' }}
+      - name: Upload Signed App (for stapling later if needed)
+        if: ${{ env.APPLE_SIGNING_IDENTITY != '' && steps.notarize.outputs.stapled == 'false' }}
         uses: actions/upload-artifact@v4
         with:
           name: signed-app
@@ -227,13 +266,14 @@ jobs:
 
     outputs:
       submission_id: ${{ steps.notarize.outputs.submission_id }}
+      stapled: ${{ steps.notarize.outputs.stapled }}
 
   # ============================================================
-  # AUTOMATIC STAPLING (runs in background after release)
+  # BACKGROUND STAPLING (only if 30 min timeout, notarization pending)
   # ============================================================
   staple-notarization:
     needs: build-macos
-    if: ${{ needs.build-macos.outputs.submission_id != '' }}
+    if: ${{ needs.build-macos.outputs.submission_id != '' && needs.build-macos.outputs.stapled == 'false' }}
     runs-on: macos-latest
     continue-on-error: true  # Don't fail the whole workflow if stapling fails
     steps:
@@ -253,9 +293,9 @@ jobs:
           SUBMISSION_ID: ${{ needs.build-macos.outputs.submission_id }}
         run: |
           echo "Waiting for notarization: $SUBMISSION_ID"
-          echo "Polling every 30s, max 60 minutes..."
+          echo "Polling every 30s, max 30 more minutes (already waited 30 min in main job)..."
 
-          MAX_ATTEMPTS=120  # 120 * 30s = 60 min
+          MAX_ATTEMPTS=60  # 60 * 30s = 30 min (total 60 min with main job)
           ATTEMPT=0
 
           while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
