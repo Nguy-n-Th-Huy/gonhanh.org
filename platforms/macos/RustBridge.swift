@@ -1330,7 +1330,8 @@ private func detectMethod() -> (InjectionMethod, (UInt32, UInt32, UInt32)) {
         "com.pushplaylabs.sidekick",     // Sidekick
         "com.firstversionist.polypane",  // Polypane
         "ai.perplexity.comet",           // Comet (Perplexity AI)
-        "com.duckduckgo.macos.browser"   // DuckDuckGo
+        "com.duckduckgo.macos.browser",  // DuckDuckGo
+        "com.openai.atlas"               // ChatGPT Atlas
     ]
     if browsers.contains(bundleId) && role == "AXTextField" { Log.method("sel:browser"); return cached(.selection, (0, 0, 0)) }
     if role == "AXTextField" && bundleId.hasPrefix("com.jetbrains") { Log.method("sel:jb"); return cached(.selection, (0, 0, 0)) }
