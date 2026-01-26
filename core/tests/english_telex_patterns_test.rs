@@ -64,16 +64,76 @@ fn generate_transformed_buffer(word: &str) -> String {
     result
 }
 
-/// Generate typing variants for English word with telex patterns
-/// Order:
-/// 1. Self-cancel: add extra char to cancel transform (normal typing, no restore needed)
-/// 2. Direct: word as-is (triggers VN transform, needs auto-restore)
-fn generate_english_typing_variants(word: &str) -> Vec<String> {
+/// Check if word starts with valid Vietnamese initial consonant
+fn has_valid_vn_initial(word: &str) -> bool {
     let lower = word.to_lowercase();
 
-    // Self-cancel patterns: pattern + extra char cancels the transform
-    // aa→â, aaa→aa | ee→ê, eee→ee | oo→ô, ooo→oo
-    // aw→ă, aww→aw | ow→ơ, oww→ow | uw→ư, uww→uw | dd→đ, ddd→dd
+    // Invalid English consonant clusters (not valid in Vietnamese)
+    let invalid_clusters = [
+        // 3-char clusters
+        "thr", "str", "spr", "scr", "spl", "shr", "sch", // 2-char clusters
+        "bl", "br", "cl", "cr", "dr", "fl", "fr", "gl", "gr", "pl", "pr", "sl", "sc", "sk", "sm",
+        "sn", "sp", "st", "sw", "tw", "wr", "wh", // Invalid single initials
+        "f", "j", "w", "z",
+    ];
+
+    // Check invalid clusters first (longer patterns first)
+    for cluster in invalid_clusters {
+        if lower.starts_with(cluster) {
+            return false;
+        }
+    }
+
+    // Valid Vietnamese initials
+    let valid_initials = [
+        "ngh", "ch", "gh", "gi", "kh", "ng", "nh", "ph", "qu", "th", "tr", "b", "c", "d", "g", "h",
+        "k", "l", "m", "n", "p", "q", "r", "s", "t", "v", "x", "a", "e", "i", "o", "u", "y",
+    ];
+
+    for initial in valid_initials {
+        if lower.starts_with(initial) {
+            // Check what follows the initial
+            let rest = &lower[initial.len()..];
+            if rest.is_empty() {
+                return true;
+            }
+            let next = rest.chars().next().unwrap();
+            // Must be followed by vowel (or 'h'/'r' for valid digraphs already checked)
+            if is_vowel_char(next) {
+                return true;
+            }
+            // Digraphs/trigraphs are already complete, anything after should be vowel
+            if initial.len() > 1 {
+                return false;
+            }
+            // Single consonant followed by consonant - only valid for digraphs
+            // th, tr, ch, gh, kh, ng, nh, ph, qu are already in valid_initials
+            return false;
+        }
+    }
+
+    false
+}
+
+fn is_vowel_char(c: char) -> bool {
+    matches!(c, 'a' | 'e' | 'i' | 'o' | 'u' | 'y')
+}
+
+/// Generate typing variants for English word with telex patterns
+/// - Words with valid VN initial: test both direct + self-cancel variants
+/// - Words with invalid VN initial: test direct only (rely on auto-restore)
+fn generate_english_typing_variants(word: &str) -> Vec<String> {
+    // Words with invalid Vietnamese initial → direct only
+    if !has_valid_vn_initial(word) {
+        return vec![word.to_string()];
+    }
+
+    let lower = word.to_lowercase();
+    let chars: Vec<char> = lower.chars().collect();
+
+    // Self-cancel patterns: extra char cancels the transform
+    // Only apply for patterns that are the PRIMARY vowel cluster
+    // Skip if there's another vowel BEFORE the pattern (indicates compound/longer structure)
     let self_cancel_patterns = [
         ("aa", 'a'),
         ("ee", 'e'),
@@ -84,15 +144,33 @@ fn generate_english_typing_variants(word: &str) -> Vec<String> {
         ("dd", 'd'),
     ];
 
-    // Generate self-cancel variant (first)
+    let is_vowel = |c: char| "aeiou".contains(c);
+
     let mut self_cancel = word.to_string();
     for (pattern, cancel_char) in self_cancel_patterns {
-        if lower.contains(pattern) {
-            self_cancel = insert_cancel_char(&self_cancel, pattern, cancel_char);
+        if let Some(pos) = lower.find(pattern) {
+            // Check if there's a vowel BEFORE the pattern
+            // If yes, skip cancel (pattern is not the primary vowel)
+            // Examples:
+            //   "goon" - no vowel before 'oo' → generate cancel ✓
+            //   "career" - has 'a' before 'ee' → skip cancel ✓
+            //   "boom" - no vowel before 'oo' → generate cancel ✓
+            //   "doreen" - has 'o' before 'ee' → skip cancel ✓
+            //   "casebook" - has 'a','e' before 'oo' → skip cancel ✓
+            let has_vowel_before = chars[..pos].iter().any(|&c| is_vowel(c));
+
+            // The has_vowel_before check handles all cases:
+            // - "however" (h-ow-ever) → no vowel before 'ow' → generate cancel ✓
+            // - "below" (b-e-l-ow) → has 'e' before 'ow' → skip cancel ✓
+            // - "narrow" (n-a-rr-ow) → has 'a' before 'ow' → skip cancel ✓
+            // - "middle" (m-i-dd-le) → has 'i' before 'dd' → skip cancel ✓
+
+            if !has_vowel_before {
+                self_cancel = insert_cancel_char(&self_cancel, pattern, cancel_char);
+            }
         }
     }
 
-    // Return: [self-cancel, direct]
     if self_cancel != word {
         vec![self_cancel, word.to_string()]
     } else {
@@ -101,6 +179,7 @@ fn generate_english_typing_variants(word: &str) -> Vec<String> {
 }
 
 /// Insert cancel character after pattern occurrences
+/// Skip if double vowel (aa/ee/oo) is preceded by 'w' - horn/breve takes precedence
 fn insert_cancel_char(word: &str, pattern: &str, cancel_char: char) -> String {
     let mut result = String::new();
     let chars: Vec<char> = word.chars().collect();
@@ -111,15 +190,28 @@ fn insert_cancel_char(word: &str, pattern: &str, cancel_char: char) -> String {
         let remaining_lower = remaining.to_lowercase();
 
         if remaining_lower.starts_with(pattern) {
-            // Add the pattern chars
-            for j in 0..pattern.len() {
-                result.push(chars[i + j]);
-            }
-            // Add cancel char (preserve case of last pattern char)
-            if chars[i + pattern.len() - 1].is_uppercase() {
-                result.push(cancel_char.to_ascii_uppercase());
+            // Check if preceded by 'w' for double vowel patterns (aa/ee/oo)
+            // In this case, 'w' creates horn/breve, not circumflex, so no cancel needed
+            // Examples: harwood (w+oo), biweekly (w+ee), sapwood (w+oo)
+            let preceded_by_w = i > 0
+                && chars[i - 1].to_ascii_lowercase() == 'w'
+                && matches!(pattern, "aa" | "ee" | "oo");
+
+            if preceded_by_w {
+                // Skip cancel, just add the pattern as-is
+                for j in 0..pattern.len() {
+                    result.push(chars[i + j]);
+                }
             } else {
-                result.push(cancel_char);
+                for j in 0..pattern.len() {
+                    result.push(chars[i + j]);
+                }
+                // Preserve case of last pattern char for cancel char
+                if chars[i + pattern.len() - 1].is_uppercase() {
+                    result.push(cancel_char.to_ascii_uppercase());
+                } else {
+                    result.push(cancel_char);
+                }
             }
             i += pattern.len();
         } else {
@@ -399,34 +491,32 @@ fn test_english_telex_patterns_restore() {
     if !failures.is_empty() {
         println!("\n=== FAILURES (first 30) ===\n");
         println!(
-            "{:<15} {:<12} {:<12} {:<12}",
-            "INPUT", "EXPECTED", "ACTUAL", "BUFFER"
+            "{:<12} {:<15} {:<12} {:<12} {:<12}",
+            "WORD", "VARIANT", "EXPECTED", "ACTUAL", "BUFFER"
         );
-        println!("{}", "-".repeat(55));
-        for (input, expected, actual, buffer) in failures.iter().take(30) {
+        println!("{}", "-".repeat(65));
+        for (variant, word, actual, buffer) in failures.iter().take(30) {
             println!(
-                "{:<15} {:<12} {:<12} {:<12}",
-                input, expected, actual, buffer
+                "{:<12} {:<15} {:<12} {:<12} {:<12}",
+                word, variant, word, actual, buffer
             );
         }
 
-        // Write failures to file
+        // Write failures to file (same format as vietnamese_22k_failures.txt)
         use std::io::Write;
-        if let Ok(mut f) = std::fs::File::create("tests/data/english_100k_failures_variants.txt") {
-            writeln!(f, "# English 100k Failures - Typing Variants").ok();
-            writeln!(f, "# Tests self-cancel patterns (schoool → school)").ok();
-            writeln!(f, "# Format: INPUT \\t EXPECTED \\t ACTUAL \\t BUFFER").ok();
-            writeln!(f, "# Total: {}", failures.len()).ok();
-            writeln!(f, "#").ok();
-            writeln!(f, "# INPUT: variant typed (e.g., schoool)").ok();
-            writeln!(f, "# EXPECTED: original English word (e.g., school)").ok();
-            writeln!(f, "# ACTUAL: engine output").ok();
-            writeln!(f, "# BUFFER: Vietnamese transform state").ok();
+        if let Ok(mut f) = std::fs::File::create("tests/data/english_100k_failures.txt") {
+            writeln!(f, "# English 100k Typing Variants Failures").ok();
+            writeln!(
+                f,
+                "# Format: WORD \\t VARIANT \\t EXPECTED \\t ACTUAL \\t BUFFER"
+            )
+            .ok();
+            writeln!(f, "# Total failures: {}", failures.len()).ok();
             writeln!(f).ok();
-            for (input, expected, actual, buffer) in &failures {
-                writeln!(f, "{}\t{}\t{}\t{}", input, expected, actual, buffer).ok();
+            for (variant, word, actual, buffer) in &failures {
+                writeln!(f, "{}\t{}\t{}\t{}\t{}", word, variant, word, actual, buffer).ok();
             }
-            println!("\nWritten to: tests/data/english_100k_failures_variants.txt");
+            println!("\nWritten to: tests/data/english_100k_failures.txt");
         }
     }
 

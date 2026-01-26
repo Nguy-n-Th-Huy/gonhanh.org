@@ -1,7 +1,7 @@
 # English 100k Failures - Tone Markers
 # Cause: words ending with s/f/r/x/j trigger tone marks
 # Format: WORD \t ACTUAL \t BUFFER
-# Total: 1255 (+ 146 both)
+# Total: 1256 (+ 148 both)
 #
 # WORD: English word typed
 # ACTUAL: engine output after space
@@ -365,6 +365,7 @@ bins	bín	bín
 soar	soả	soả
 boers	boé	boé
 liens	lién	lién
+queues	quếu	quếu
 ics	íc	íc
 orr	or	or
 ij	ị	ị
@@ -419,7 +420,6 @@ qos	qó	qó
 swarms	sưám	sưám
 aix	ãi	ãi
 hereof	hềo	hềo
-estes	éestes	éets
 dif	dì	dì
 lamar	lẩm	lẩm
 sacs	sác	sác
@@ -462,7 +462,6 @@ epr	ẻp	ẻp
 nurs	nú	nú
 choirs	chói	chói
 hangar	hẩng	hẩng
-osmosis	óosmosis	óomsis
 gif	gì	gì
 wf	ừ	ừ
 hors	hó	hó
@@ -609,6 +608,7 @@ doers	doé	doé
 sufis	súi	súi
 mois	mói	mói
 surer	suer	suer
+mems	mém	mém
 ris	rí	rí
 hoar	hoả	hoả
 ves	vé	vé
@@ -817,6 +817,7 @@ basf	bà	bà
 nys	ný	ný
 dyers	dyé	dyé
 mejor	mẻo	mẻo
+dufour	duỏu	duỏu
 ruf	rù	rù
 engr	ẻng	ẻng
 onr	ỏn	ỏn
@@ -840,6 +841,7 @@ chasms	chams	chams
 lef	lè	lè
 lus	lú	lú
 tarr	tar	tar
+rufous	ruóu	ruóu
 doj	dọ	dọ
 ojos	ố	ố
 escher	ểch	ểch
@@ -941,7 +943,6 @@ carus	cáu	cáu
 achr	ảch	ảch
 oes	oé	oé
 auras	ấu	ấu
-pastas	ppastas	páats
 dus	dú	dú
 trots	trót	trót
 tots	tót	tót
@@ -1330,6 +1331,7 @@ looser	lổe	lổe
 aas	ấ	ấ
 meer	mể	mể
 sows	sớ	sớ
+referees	rểees	rểees
 veer	vể	vể
 saar	sar	sẩ
 dodds	đó	đó
@@ -1401,6 +1403,7 @@ thaws	thắ	thắ
 mees	mế	mế
 looses	lốe	lốe
 macaws	mắc	mắc
+wallflower	ửàlllowe	ửàlllowe
 nees	nế	nế
 usaaf	uầ	uầ
 powis	pới	pới

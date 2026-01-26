@@ -7639,7 +7639,7 @@ chóng	chongs,chosng
 mặt	matjw,matwj,mawjt,mawtj
 chóng	chongs,chosng
 vánh	vanhs,vasnh
-chòong	chooofng,chooongf
+choòng	chooofng,chooongf
 chóp	chops,chosp
 chóp	chops,chosp
 bu	bu
@@ -16034,7 +16034,7 @@ mắt	matsw,matws,mawst,mawts
 gọng	gojng,gongj
 gọng	gojng,gongj
 kìm	kifm,kimf
-gòong	gooofng,gooongf
+goòng	gooofng,gooongf
 góp	gops,gosp
 góp	gops,gosp
 chuyện	chuyeejn,chuyeenj,chuyejen,chuyenej,chuyenje
@@ -16869,7 +16869,7 @@ hắc	hacsw,hacws,hawcs,hawsc
 hắc	hacsw,hacws,hawcs,hawsc
 bạch	bachj,bajch
 hắc	hacsw,hacws,hawcs,hawsc
-buá	buas,busa
+búa	buas,busa
 hắc	hacsw,hacws,hawcs,hawsc
 ín	ins,isn
 hắc	hacsw,hacws,hawcs,hawsc
@@ -17294,7 +17294,7 @@ trơn	tronw,trown
 hết	heest,heets,heset,hetes,hetse
 trụi	truij,truji
 hết	heest,heets,heset,hetes,hetse
-viá	vias,visa
+vía	vias,visa
 hết	heest,heets,heset,hetes,hetse
 ý	ys
 hệt	heejt,heetj,hejet,hetej,hetje
@@ -17666,11 +17666,11 @@ thức	thucsw,thucws,thuwcs,thuwsc
 hình	hifnh,hinhf
 thức	thucsw,thucws,thuwcs,thuwsc
 chủ	chur
-nghiã	nghiax,nghixa
+nghĩa	nghiax,nghixa
 hình	hifnh,hinhf
 thức	thucsw,thucws,thuwcs,thuwsc
 chủ	chur
-nghiã	nghiax,nghixa
+nghĩa	nghiax,nghixa
 hình	hifnh,hinhf
 thức	thucsw,thucws,thuwcs,thuwsc
 hoá	hoas,hosa
@@ -21437,7 +21437,7 @@ hoá	hoas,hosa
 kịch	kichj,kijch
 liệt	lieejt,lieetj,liejet,lietej,lietje
 kịch	kichj,kijch
-muá	muas,musa
+múa	muas,musa
 kịch	kichj,kijch
 ngắn	ngansw,nganws,ngawns,ngawsn
 kịch	kichj,kijch
@@ -26643,7 +26643,7 @@ ngư	nguw
 ngư	nguw
 phủ	phur
 ngư	nguw
-tiêù	tieeuf,tieuef,tieufe
+tiều	tieeuf,tieuef,tieufe
 ngư	nguw
 trường	truongfw,truongwf,truowfng,truowngf,truwowfng,truwowngf
 ngữ	nguwx,nguxw

@@ -1,7 +1,7 @@
 # English 100k Failures - Vowel Patterns
 # Cause: aa/ee/oo/aw/ow/uw/dd trigger vowel transforms
 # Format: WORD \t ACTUAL \t BUFFER
-# Total: 262 (+ 146 both)
+# Total: 264 (+ 148 both)
 #
 # WORD: English word typed
 # ACTUAL: engine output after space
@@ -79,6 +79,7 @@ beet	bêt	bêt
 ddt	đt	đt
 canaan	canan	canan
 musee	múee	muế
+referee	rểee	rểee
 woo	uô	uô
 chow	chơ	chơ
 hoop	hôp	hôp
@@ -117,7 +118,6 @@ heen	hên	hên
 loon	lôn	lôn
 hoo	hô	hô
 kee	kê	kê
-rostow	rớt	rớt
 noaa	noâ	noâ
 doo	dô	dô
 moo	mô	mô
@@ -198,6 +198,7 @@ seest	sết	sết
 thurow	thuở	thuở
 awt	ăt	ăt
 oot	ôt	ôt
+refereed	rểeed	rểeed
 toon	tôn	tôn
 hooray	hôảy	hôảy
 gowan	gơan	gơan
@@ -233,6 +234,7 @@ laa	lâ	lâ
 oon	ôn	ôn
 lowa	lơa	lơa
 oost	ốt	ốt
+deedee	đêee	đêee
 mdd	mđ	mđ
 hiaa	hiâ	hiâ
 duree	dủee	duể
@@ -337,6 +339,7 @@ looser	lổe	lổe
 aas	ấ	ấ
 meer	mể	mể
 sows	sớ	sớ
+referees	rểees	rểees
 veer	vể	vể
 saar	sar	sẩ
 dodds	đó	đó
@@ -408,6 +411,7 @@ thaws	thắ	thắ
 mees	mế	mế
 looses	lốe	lốe
 macaws	mắc	mắc
+wallflower	ửàlllowe	ửàlllowe
 nees	nế	nế
 usaaf	uầ	uầ
 powis	pới	pới
