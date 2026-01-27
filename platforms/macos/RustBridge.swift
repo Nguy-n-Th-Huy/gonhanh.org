@@ -247,7 +247,7 @@ private class TextInjector {
             return
         }
 
-        let startTime = CFAbsoluteTimeGetCurrent()
+        let startTime = Log.isEnabled ? CFAbsoluteTimeGetCurrent() : 0
 
         for _ in 0..<bs {
             postKey(KeyCode.backspace, source: src)
@@ -257,11 +257,11 @@ private class TextInjector {
 
         let chunks = postText(text, source: src, delay: delays.2, chunkSize: charByChar ? 1 : 20)
 
-        let elapsed = (CFAbsoluteTimeGetCurrent() - startTime) * 1000  // ms
-        let expected = Double(bs) * Double(delays.0) / 1000 +
-                       (bs > 0 ? Double(delays.1) / 1000 : 0) +
-                       Double(chunks) * Double(delays.2) / 1000
-        Log.info("inject done: bs=\(bs) chunks=\(chunks) time=\(String(format: "%.1f", elapsed))ms expect=\(String(format: "%.1f", expected))ms")
+        if Log.isEnabled {
+            let elapsed = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
+            let expected = (Double(bs) * Double(delays.0) + (bs > 0 ? Double(delays.1) : 0) + Double(chunks) * Double(delays.2)) / 1000
+            Log.info("inject done: bs=\(bs) chunks=\(chunks) time=\(String(format: "%.1f", elapsed))ms expect=\(String(format: "%.1f", expected))ms")
+        }
     }
 
     /// Selection injection: Shift+Left to select, then type replacement (for browser address bars)
@@ -1083,11 +1083,13 @@ private func keyboardCallback(
 
     let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
 
-    // Log all keystrokes (before any processing)
-    if let char = event.keyboardCharacter() {
-        Log.info("keyDown: code=\(keyCode) char='\(char)'")
-    } else {
-        Log.info("keyDown: code=\(keyCode)")
+    // Log all keystrokes (only when debug enabled - no overhead otherwise)
+    if Log.isEnabled {
+        if let char = event.keyboardCharacter() {
+            Log.info("keyDown: code=\(keyCode) char='\(char)'")
+        } else {
+            Log.info("keyDown: code=\(keyCode)")
+        }
     }
 
     // Custom shortcut to toggle Vietnamese (default: Ctrl+Space)
