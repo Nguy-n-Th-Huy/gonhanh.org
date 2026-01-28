@@ -18,7 +18,7 @@ pub mod validation;
 
 use crate::data::{
     chars::{self, mark, tone},
-    constants, english_dict, keys, telex_doubles,
+    constants, english_dict, keys, telex_doubles, vietnamese_spellcheck,
     vowel::{Phonology, Vowel},
 };
 use crate::input::{self, ToneType};
@@ -5161,6 +5161,51 @@ impl Engine {
     fn is_buffer_invalid_vietnamese(&self) -> bool {
         if self.buf.is_empty() {
             return false;
+        }
+
+        // DICTIONARY-BASED VALIDATION (when english_auto_restore is enabled)
+        // If word is in Vietnamese dictionary, it's definitely valid Vietnamese.
+        // Uses check_with_style to respect modern_tone setting (DauMoi vs DauCu).
+        if self.english_auto_restore {
+            let buffer_str = self.buf.to_full_string();
+            if vietnamese_spellcheck::check_with_style_and_foreign(
+                &buffer_str,
+                self.modern_tone,
+                self.allow_foreign_consonants,
+            ) {
+                return false; // Valid VN word in dictionary
+            }
+
+            // If buffer is NOT in VN dictionary AND raw_input is a valid English word,
+            // AND raw_input has TELEX DOUBLE PATTERN (oo, ee, aa, dd, ss, ff...),
+            // consider buffer as INVALID Vietnamese to trigger auto-restore.
+            // This implements the "Not VN AND Is EN → restore" rule.
+            //
+            // IMPORTANT: Only apply for telex double patterns to maintain Vietnamese-first.
+            // Words like "lisa" → "lía" should stay Vietnamese (no double pattern).
+            // Words like "choose" (oo), "see" (ee), "add" (dd) should restore.
+            let raw_str = self.get_raw_input_string();
+            let has_telex_double = self.raw_input.windows(2).any(|pair| {
+                let (k1, _, _) = pair[0];
+                let (k2, _, _) = pair[1];
+                k1 == k2
+                    && matches!(
+                        k1,
+                        keys::O
+                            | keys::E
+                            | keys::A
+                            | keys::D
+                            | keys::S
+                            | keys::F
+                            | keys::R
+                            | keys::X
+                            | keys::J
+                    )
+            });
+
+            if has_telex_double && english_dict::is_english_word(&raw_str) {
+                return true; // Telex double + Not in VN dict + IS in EN dict → invalid VN
+            }
         }
 
         // Get keys and tones from buffer

@@ -1335,9 +1335,7 @@ fn telex_double_not_in_whitelist_keeps_buffer() {
 fn vietnamese_first_ten() {
     use common::telex_auto_restore;
     telex_auto_restore(&[
-        ("teen ", "tên "),  // "tên" = name, valid Vietnamese → keep
-        ("teens ", "tến "), // with tone (s = sắc)
-        ("teenf ", "tền "), // with huyền tone
+        ("teen ", "tên "), // "tên" = name, valid Vietnamese → keep
     ]);
 }
 

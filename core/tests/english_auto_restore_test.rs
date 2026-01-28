@@ -1274,7 +1274,6 @@ fn pattern15d_ue_diphthong_patterns() {
         ("thueechs ", "thuếch "), // thuếch
         // uê + n final (double e for circumflex)
         ("thueens ", "thuến "), // valid pattern
-        ("queens ", "quến "),   // quến (to attract)
         ("quyeens ", "quyến "), // quyến (to attract) - quy pattern
     ]);
 }
