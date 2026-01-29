@@ -64,6 +64,12 @@ public static class KeyCodes
     public const ushort VK_RIGHT = 0x27;
     public const ushort VK_DOWN = 0x28;
 
+    // Navigation keys
+    public const ushort VK_HOME = 0x24;
+    public const ushort VK_END = 0x23;
+    public const ushort VK_PRIOR = 0x21;  // Page Up
+    public const ushort VK_NEXT = 0x22;   // Page Down
+
     // Punctuation (US keyboard layout)
     public const ushort VK_OEM_1 = 0xBA;     // ;:
     public const ushort VK_OEM_PLUS = 0xBB;  // =+
@@ -115,14 +121,24 @@ public static class KeyCodes
     }
 
     /// <summary>
-    /// Check if a key should clear the IME buffer (word boundaries)
+    /// Check if a key should clear the IME buffer (word boundaries and cursor movement)
     /// </summary>
     public static bool IsBufferClearKey(ushort keyCode)
     {
         return keyCode == VK_SPACE ||
                keyCode == VK_RETURN ||
                keyCode == VK_TAB ||
-               keyCode == VK_ESCAPE;
+               keyCode == VK_ESCAPE ||
+               // Arrow keys - cursor movement breaks the typing flow
+               keyCode == VK_LEFT ||
+               keyCode == VK_RIGHT ||
+               keyCode == VK_UP ||
+               keyCode == VK_DOWN ||
+               // Navigation keys
+               keyCode == VK_HOME ||
+               keyCode == VK_END ||
+               keyCode == VK_PRIOR ||  // Page Up
+               keyCode == VK_NEXT;     // Page Down
     }
 
     /// <summary>

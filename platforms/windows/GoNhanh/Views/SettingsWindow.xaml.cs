@@ -111,16 +111,7 @@ public partial class SettingsWindow : Window
         var wpfModifiers = Keyboard.Modifiers;
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
 
-        // Ignore modifier-only presses
-        if (key == Key.LeftCtrl || key == Key.RightCtrl ||
-            key == Key.LeftAlt || key == Key.RightAlt ||
-            key == Key.LeftShift || key == Key.RightShift ||
-            key == Key.LWin || key == Key.RWin)
-        {
-            return;
-        }
-
-        // ESC to cancel
+        // ESC to cancel (without modifiers)
         if (key == Key.Escape && wpfModifiers == WpfModifierKeys.None)
         {
             textBox.Text = textBox.Tag?.ToString() == "Toggle"
@@ -139,9 +130,38 @@ public partial class SettingsWindow : Window
         if (wpfModifiers.HasFlag(WpfModifierKeys.Shift))
             coreModifiers |= Core.ModifierKeys.Shift;
 
-        // Create shortcut with (keyCode, modifiers) constructor
-        var keyCode = (ushort)KeyInterop.VirtualKeyFromKey(key);
-        var shortcut = new KeyboardShortcut(keyCode, coreModifiers);
+        // Check if this is a modifier-only press (Ctrl, Shift, Alt keys)
+        bool isModifierKey = key == Key.LeftCtrl || key == Key.RightCtrl ||
+                             key == Key.LeftAlt || key == Key.RightAlt ||
+                             key == Key.LeftShift || key == Key.RightShift ||
+                             key == Key.LWin || key == Key.RWin;
+
+        KeyboardShortcut shortcut;
+        if (isModifierKey && coreModifiers != Core.ModifierKeys.None)
+        {
+            // Modifier-only shortcut (e.g., Ctrl+Shift)
+            // Need at least 2 modifiers for modifier-only shortcuts
+            int modCount = 0;
+            if (wpfModifiers.HasFlag(WpfModifierKeys.Control)) modCount++;
+            if (wpfModifiers.HasFlag(WpfModifierKeys.Alt)) modCount++;
+            if (wpfModifiers.HasFlag(WpfModifierKeys.Shift)) modCount++;
+
+            if (modCount < 2)
+            {
+                // Single modifier - wait for more
+                textBox.Text = coreModifiers.ToString() + "+...";
+                return;
+            }
+
+            // Create modifier-only shortcut (KeyCode = 0xFFFF)
+            shortcut = new KeyboardShortcut(0xFFFF, coreModifiers);
+        }
+        else
+        {
+            // Normal shortcut with main key
+            var keyCode = (ushort)KeyInterop.VirtualKeyFromKey(key);
+            shortcut = new KeyboardShortcut(keyCode, coreModifiers);
+        }
 
         textBox.Text = shortcut.DisplayString;
 

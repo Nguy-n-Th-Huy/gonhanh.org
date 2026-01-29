@@ -14,6 +14,7 @@ public static class TextSender
     private const uint INPUT_KEYBOARD = 1;
     private const uint KEYEVENTF_KEYUP = 0x0002;
     private const uint KEYEVENTF_UNICODE = 0x0004;
+    private const uint KEYEVENTF_SCANCODE = 0x0008;
 
     #endregion
 
@@ -137,13 +138,13 @@ public static class TextSender
             var inputs = new List<INPUT>();
 
             // Shift down
-            inputs.Add(CreateKeyInput(KeyCodes.VK_SHIFT, 0, marker));
+            inputs.Add(CreateKeyInput(KeyCodes.VK_SHIFT, 0, 0, marker));
             // Left arrow down
-            inputs.Add(CreateKeyInput(KeyCodes.VK_LEFT, 0, marker));
+            inputs.Add(CreateKeyInput(KeyCodes.VK_LEFT, 0, 0, marker));
             // Left arrow up
-            inputs.Add(CreateKeyInput(KeyCodes.VK_LEFT, KEYEVENTF_KEYUP, marker));
+            inputs.Add(CreateKeyInput(KeyCodes.VK_LEFT, 0, KEYEVENTF_KEYUP, marker));
             // Shift up
-            inputs.Add(CreateKeyInput(KeyCodes.VK_SHIFT, KEYEVENTF_KEYUP, marker));
+            inputs.Add(CreateKeyInput(KeyCodes.VK_SHIFT, 0, KEYEVENTF_KEYUP, marker));
 
             SendInputs(inputs);
 
@@ -200,13 +201,41 @@ public static class TextSender
 
     private static void AddKeyPress(List<INPUT> inputs, ushort vk, UIntPtr marker)
     {
-        // Key down
-        inputs.Add(CreateKeyInput(vk, 0, marker));
-        // Key up
-        inputs.Add(CreateKeyInput(vk, KEYEVENTF_KEYUP, marker));
+        // For backspace, use scancode-only mode (wVk=0) - required for Brave browser
+        if (vk == KeyCodes.VK_BACK)
+        {
+            // Scancode 0x0E = Backspace
+            inputs.Add(CreateScanCodeInput(0x0E, 0, marker));
+            inputs.Add(CreateScanCodeInput(0x0E, KEYEVENTF_KEYUP, marker));
+        }
+        else
+        {
+            // Normal key press with virtual key
+            inputs.Add(CreateKeyInput(vk, 0, 0, marker));
+            inputs.Add(CreateKeyInput(vk, 0, KEYEVENTF_KEYUP, marker));
+        }
     }
 
-    private static INPUT CreateKeyInput(ushort vk, uint flags, UIntPtr marker)
+    private static INPUT CreateScanCodeInput(ushort scanCode, uint flags, UIntPtr marker)
+    {
+        return new INPUT
+        {
+            type = INPUT_KEYBOARD,
+            u = new INPUTUNION
+            {
+                ki = new KEYBDINPUT
+                {
+                    wVk = 0,  // No virtual key - scancode only
+                    wScan = scanCode,
+                    dwFlags = KEYEVENTF_SCANCODE | flags,
+                    time = 0,
+                    dwExtraInfo = marker
+                }
+            }
+        };
+    }
+
+    private static INPUT CreateKeyInput(ushort vk, ushort scanCode, uint flags, UIntPtr marker)
     {
         return new INPUT
         {
@@ -216,7 +245,7 @@ public static class TextSender
                 ki = new KEYBDINPUT
                 {
                     wVk = vk,
-                    wScan = 0,
+                    wScan = scanCode,
                     dwFlags = flags,
                     time = 0,
                     dwExtraInfo = marker

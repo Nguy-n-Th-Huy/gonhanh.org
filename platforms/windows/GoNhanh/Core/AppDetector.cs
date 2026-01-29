@@ -42,6 +42,7 @@ public readonly struct InjectionDelays
     public static InjectionDelays Default => new(2000, 5000, 2000);
     public static InjectionDelays Slow => new(5000, 10000, 5000);
     public static InjectionDelays Electron => new(10000, 30000, 10000);
+    public static InjectionDelays Browser => new(15000, 50000, 15000);
 }
 
 /// <summary>
@@ -73,18 +74,19 @@ public static class AppDetector
 
         return processName.ToLowerInvariant() switch
         {
-            // Electron apps - higher delays needed
+            // Electron apps - use slow method with electron delays
             "code" or "cursor" or "claude" or "slack" or "discord" or "notion" =>
                 (InjectionMethod.Slow, InjectionDelays.Electron),
 
-            // Terminals - higher delays
-            "windowsterminal" or "cmd" or "powershell" or "pwsh" or 
-            "wezterm" or "wezterm-gui" or "alacritty" or "hyper" or "conemu64" =>
+            // Terminals - use slow method with electron delays
+            "windowsterminal" or "cmd" or "powershell" or "pwsh" or
+            "wezterm" or "wezterm-gui" or "alacritty" or "hyper" or "conemu64" or
+            "mintty" =>
                 (InjectionMethod.Slow, InjectionDelays.Electron),
 
-            // Browsers - use slow method with higher delays
+            // Browsers - use slow method with browser delays
             "chrome" or "msedge" or "firefox" or "brave" or "opera" or "vivaldi" or "arc" =>
-                (InjectionMethod.Slow, InjectionDelays.Slow),
+                (InjectionMethod.Slow, InjectionDelays.Browser),
 
             // Office apps - moderate delays
             "winword" or "excel" or "powerpnt" or "outlook" =>

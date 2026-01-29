@@ -106,8 +106,12 @@ public class TrayIcon : IDisposable
             Visible = true
         };
 
-        // Double-click to toggle (like macOS)
-        _notifyIcon.DoubleClick += (s, e) => ToggleEnabled();
+        // Single click to toggle (like Unikey)
+        _notifyIcon.MouseClick += (s, e) =>
+        {
+            if (e.Button == MouseButtons.Left)
+                ToggleEnabled();
+        };
 
         // Update initial state
         UpdateState(currentMethod, isEnabled);
