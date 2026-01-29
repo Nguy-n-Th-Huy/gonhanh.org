@@ -78,8 +78,6 @@ public class PerAppModeManager : IDisposable
     /// </summary>
     public void Start()
     {
-        if (!IsEnabled) return;
-
         lock (_lock)
         {
             if (_hook != IntPtr.Zero) return; // Already started
@@ -103,7 +101,8 @@ public class PerAppModeManager : IDisposable
             if (!string.IsNullOrEmpty(processName))
             {
                 _currentProcessName = processName;
-                RestoreState(processName);
+                if (IsEnabled)
+                    RestoreState(processName);
             }
         }
     }
@@ -129,9 +128,9 @@ public class PerAppModeManager : IDisposable
     /// </summary>
     public void Restart()
     {
-        Stop();
-        if (IsEnabled)
-            Start();
+        // Hook always runs, no need to restart
+        // Just clear buffer when toggling per-app mode
+        RustBridge.Clear();
     }
 
     #endregion
@@ -142,8 +141,6 @@ public class PerAppModeManager : IDisposable
         IntPtr hWinEventHook, uint eventType, IntPtr hwnd,
         int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
     {
-        if (!IsEnabled) return;
-
         // Invalidate cache first to get fresh process name
         AppDetector.InvalidateCache();
         var processName = AppDetector.GetForegroundProcessName();
@@ -157,20 +154,23 @@ public class PerAppModeManager : IDisposable
             // Double-check after acquiring lock
             if (processName == _currentProcessName) return;
 
-            // Save current state before switching
-            if (!string.IsNullOrEmpty(_currentProcessName))
+            // Save current state before switching (only if per-app mode enabled)
+            if (IsEnabled && !string.IsNullOrEmpty(_currentProcessName))
                 SaveState(_currentProcessName, _settings.IsEnabled);
 
             _currentProcessName = processName;
 
-            // Clear IME buffer on app switch (rhythm break)
+            // Always clear IME buffer on app switch (rhythm break)
             RustBridge.Clear();
 
-            // Restore or initialize state for new app
-            if (HasSavedState(processName))
-                RestoreState(processName);
-            else
-                SaveState(processName, _settings.IsEnabled);
+            // Restore or initialize state for new app (only if per-app mode enabled)
+            if (IsEnabled)
+            {
+                if (HasSavedState(processName))
+                    RestoreState(processName);
+                else
+                    SaveState(processName, _settings.IsEnabled);
+            }
         }
     }
 
