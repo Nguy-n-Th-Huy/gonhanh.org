@@ -60,6 +60,8 @@ public partial class App : System.Windows.Application
         _trayIcon.OnExitRequested += ExitApplication;
         _trayIcon.OnMethodChanged += ChangeInputMethod;
         _trayIcon.OnEnabledChanged += ToggleEnabled;
+        _trayIcon.OnCheckUpdateRequested += ShowUpdateWindow;
+        _trayIcon.OnSettingsRequested += ShowSettingsWindow;
         _trayIcon.Initialize(_settings.CurrentMethod, _settings.IsEnabled);
 
         // Show onboarding if first run (like macOS)
@@ -160,6 +162,39 @@ public partial class App : System.Windows.Application
     private void OnPerAppStateRestored(bool enabled)
     {
         _trayIcon?.UpdateState(_settings.CurrentMethod, enabled);
+    }
+
+    private void ShowUpdateWindow()
+    {
+        var updateWindow = new UpdateWindow();
+        updateWindow.ShowDialog();
+    }
+
+    private void ShowSettingsWindow()
+    {
+        var settingsWindow = new SettingsWindow(_settings, OnSettingsApplied);
+        settingsWindow.ShowDialog();
+    }
+
+    private void OnSettingsApplied(SettingsService settings)
+    {
+        // Apply settings to Rust engine
+        RustBridge.SetMethod(settings.CurrentMethod);
+        RustBridge.SetEnabled(settings.IsEnabled);
+        RustBridge.SetModernTone(settings.UseModernTone);
+        RustBridge.SetEscRestore(settings.RestoreShortcutEnabled);
+
+        // Update keyboard hook shortcuts
+        _keyboardHook?.SetToggleShortcut(settings.ToggleShortcut);
+        _keyboardHook?.SetRestoreShortcut(settings.RestoreShortcut);
+        _keyboardHook?.SetRestoreShortcutEnabled(settings.RestoreShortcutEnabled);
+
+        // Update per-app mode
+        if (_perAppModeManager != null)
+            _perAppModeManager.IsEnabled = settings.PerAppModeEnabled;
+
+        // Update tray icon
+        _trayIcon?.UpdateState(settings.CurrentMethod, settings.IsEnabled);
     }
 
     private void ExitApplication()

@@ -1,0 +1,188 @@
+<Window x:Class="GoNhanh.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="GoNhanh - Cài đặt"
+        Height="520" Width="560"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="{StaticResource BackgroundBrush}">
+
+    <Window.Resources>
+        <Style x:Key="TabButtonStyle" TargetType="RadioButton">
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Border" Background="Transparent"
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#E0E7FF"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#E5E7EB"/>
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsChecked" Value="True"/>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Border" Property="Background" Value="#C7D2FE"/>
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="160"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Sidebar -->
+        <Border Grid.Column="0" Background="#F3F4F6">
+            <StackPanel Margin="12,20">
+                <RadioButton x:Name="TabGeneral" Content="Chung" IsChecked="True"
+                             GroupName="Tabs" Click="OnTabClick"
+                             Style="{StaticResource TabButtonStyle}"/>
+                <RadioButton x:Name="TabTyping" Content="Gõ phím"
+                             GroupName="Tabs" Click="OnTabClick"
+                             Style="{StaticResource TabButtonStyle}"/>
+                <RadioButton x:Name="TabShortcuts" Content="Phím tắt"
+                             GroupName="Tabs" Click="OnTabClick"
+                             Style="{StaticResource TabButtonStyle}"/>
+                <RadioButton x:Name="TabAbout" Content="Giới thiệu"
+                             GroupName="Tabs" Click="OnTabClick"
+                             Style="{StaticResource TabButtonStyle}"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Content Area -->
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="24,20">
+            <Grid>
+                <!-- General Section -->
+                <StackPanel x:Name="GeneralSection">
+                    <TextBlock Text="Chung" FontSize="20" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextBrush}" Margin="0,0,0,20"/>
+
+                    <TextBlock Text="Kiểu gõ" FontWeight="Medium"
+                               Foreground="{StaticResource TextBrush}"/>
+                    <ComboBox x:Name="MethodCombo" Width="180" HorizontalAlignment="Left"
+                              Margin="0,6,0,20" SelectionChanged="OnMethodChanged">
+                        <ComboBoxItem Content="Telex" Tag="0"/>
+                        <ComboBoxItem Content="VNI" Tag="1"/>
+                    </ComboBox>
+
+                    <CheckBox x:Name="AutoStartCheck" Content="Khởi động cùng Windows"
+                              Margin="0,0,0,16" Click="OnSettingChanged"/>
+
+                    <CheckBox x:Name="PerAppModeCheck" Content="Nhớ trạng thái theo ứng dụng"
+                              Margin="0,0,0,4" Click="OnSettingChanged"/>
+                    <TextBlock Text="Tự động bật/tắt theo từng ứng dụng"
+                               Foreground="{StaticResource SecondaryTextBrush}"
+                               FontSize="11" Margin="24,0,0,0"/>
+                </StackPanel>
+
+                <!-- Typing Section -->
+                <StackPanel x:Name="TypingSection" Visibility="Collapsed">
+                    <TextBlock Text="Gõ phím" FontSize="20" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextBrush}" Margin="0,0,0,20"/>
+
+                    <CheckBox x:Name="ModernToneCheck" Content="Bỏ dấu kiểu mới"
+                              Margin="0,0,0,4" Click="OnSettingChanged"/>
+                    <TextBlock Text="hoà → hòa (dấu trên nguyên âm cuối)"
+                               Foreground="{StaticResource SecondaryTextBrush}"
+                               FontSize="11" Margin="24,0,0,16"/>
+
+                    <CheckBox x:Name="BracketCheck" Content="Phím tắt ngoặc vuông"
+                              Margin="0,0,0,4" Click="OnSettingChanged"/>
+                    <TextBlock Text="] → ư, [ → ơ"
+                               Foreground="{StaticResource SecondaryTextBrush}"
+                               FontSize="11" Margin="24,0,0,16"/>
+
+                    <CheckBox x:Name="AutoRestoreCheck" Content="Tự động khôi phục tiếng Anh"
+                              Margin="0,0,0,4" Click="OnSettingChanged"/>
+                    <TextBlock Text="Tự động bỏ dấu khi gõ từ tiếng Anh"
+                               Foreground="{StaticResource SecondaryTextBrush}"
+                               FontSize="11" Margin="24,0,0,16"/>
+
+                    <CheckBox x:Name="AutoCapCheck" Content="Tự động viết hoa"
+                              Margin="0,0,0,4" Click="OnSettingChanged"/>
+                    <TextBlock Text="Viết hoa sau dấu chấm câu"
+                               Foreground="{StaticResource SecondaryTextBrush}"
+                               FontSize="11" Margin="24,0,0,0"/>
+                </StackPanel>
+
+                <!-- Shortcuts Section -->
+                <StackPanel x:Name="ShortcutsSection" Visibility="Collapsed">
+                    <TextBlock Text="Phím tắt" FontSize="20" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextBrush}" Margin="0,0,0,20"/>
+
+                    <TextBlock Text="Bật/Tắt tiếng Việt" FontWeight="Medium"
+                               Foreground="{StaticResource TextBrush}"/>
+                    <TextBox x:Name="ToggleShortcutBox" Width="200" HorizontalAlignment="Left"
+                             Margin="0,6,0,20" IsReadOnly="True"
+                             PreviewKeyDown="OnShortcutKeyDown" GotFocus="OnShortcutFocus"
+                             Tag="Toggle"/>
+
+                    <CheckBox x:Name="RestoreEnabledCheck" Content="Bật phím khôi phục"
+                              Margin="0,0,0,6" Click="OnSettingChanged"/>
+                    <TextBox x:Name="RestoreShortcutBox" Width="200" HorizontalAlignment="Left"
+                             Margin="0,0,0,4" IsReadOnly="True"
+                             PreviewKeyDown="OnShortcutKeyDown" GotFocus="OnShortcutFocus"
+                             Tag="Restore"/>
+                    <TextBlock Text="Khôi phục văn bản gốc (bỏ dấu)"
+                               Foreground="{StaticResource SecondaryTextBrush}"
+                               FontSize="11" Margin="0,0,0,0"/>
+                </StackPanel>
+
+                <!-- About Section -->
+                <StackPanel x:Name="AboutSection" Visibility="Collapsed">
+                    <TextBlock Text="Giới thiệu" FontSize="20" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextBrush}" Margin="0,0,0,20"/>
+
+                    <TextBlock Text="GoNhanh" FontSize="28" FontWeight="Bold"
+                               Foreground="{StaticResource PrimaryBrush}"/>
+                    <TextBlock Text="(Gõ Nhanh)" FontSize="13"
+                               Foreground="{StaticResource SecondaryTextBrush}"
+                               Margin="0,2,0,0"/>
+                    <TextBlock Text="Bộ gõ tiếng Việt hiệu suất cao" FontSize="13"
+                               Foreground="{StaticResource TextBrush}"
+                               Margin="0,8,0,0"/>
+
+                    <TextBlock x:Name="VersionText" FontSize="12"
+                               Foreground="{StaticResource SecondaryTextBrush}"
+                               Margin="0,16,0,0"/>
+
+                    <StackPanel Margin="0,20,0,0">
+                        <TextBlock Margin="0,0,0,6">
+                            <Hyperlink x:Name="WebsiteLink" RequestNavigate="OnLinkClick">
+                                <Run Text="Website" FontSize="13"/>
+                            </Hyperlink>
+                        </TextBlock>
+                        <TextBlock Margin="0,0,0,6">
+                            <Hyperlink x:Name="GitHubLink" RequestNavigate="OnLinkClick">
+                                <Run Text="GitHub" FontSize="13"/>
+                            </Hyperlink>
+                        </TextBlock>
+                        <TextBlock>
+                            <Hyperlink x:Name="IssuesLink" RequestNavigate="OnLinkClick">
+                                <Run Text="Góp ý &amp; Báo lỗi" FontSize="13"/>
+                            </Hyperlink>
+                        </TextBlock>
+                    </StackPanel>
+
+                    <TextBlock x:Name="CopyrightText" FontSize="11"
+                               Foreground="#9CA3AF" Margin="0,24,0,0"/>
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</Window>

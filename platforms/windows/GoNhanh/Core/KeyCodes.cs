@@ -124,4 +124,79 @@ public static class KeyCodes
                keyCode == VK_TAB ||
                keyCode == VK_ESCAPE;
     }
+
+    /// <summary>
+    /// Convert Windows Virtual Key code to macOS keycode for Rust engine
+    /// macOS keycodes are different from Windows VK codes
+    /// </summary>
+    public static ushort ToMacKeyCode(ushort windowsVK)
+    {
+        return windowsVK switch
+        {
+            // Letters - macOS uses different layout
+            VK_A => 0,   // A
+            VK_S => 1,   // S
+            VK_D => 2,   // D
+            VK_F => 3,   // F
+            VK_H => 4,   // H
+            VK_G => 5,   // G
+            VK_Z => 6,   // Z
+            VK_X => 7,   // X
+            VK_C => 8,   // C
+            VK_V => 9,   // V
+            VK_B => 11,  // B
+            VK_Q => 12,  // Q
+            VK_W => 13,  // W
+            VK_E => 14,  // E
+            VK_R => 15,  // R
+            VK_Y => 16,  // Y
+            VK_T => 17,  // T
+            VK_O => 31,  // O
+            VK_U => 32,  // U
+            VK_I => 34,  // I
+            VK_P => 35,  // P
+            VK_L => 37,  // L
+            VK_J => 38,  // J
+            VK_K => 40,  // K
+            VK_N => 45,  // N
+            VK_M => 46,  // M
+
+            // Numbers
+            VK_1 => 18,  // 1
+            VK_2 => 19,  // 2
+            VK_3 => 20,  // 3
+            VK_4 => 21,  // 4
+            VK_5 => 23,  // 5
+            VK_6 => 22,  // 6
+            VK_7 => 26,  // 7
+            VK_8 => 28,  // 8
+            VK_9 => 25,  // 9
+            VK_0 => 29,  // 0
+
+            // Special keys
+            VK_SPACE => 49,   // Space
+            VK_BACK => 51,    // Backspace/Delete
+            VK_TAB => 48,     // Tab
+            VK_RETURN => 36,  // Return/Enter
+            VK_ESCAPE => 53,  // Escape
+
+            // Arrow keys
+            VK_LEFT => 123,
+            VK_RIGHT => 124,
+            VK_DOWN => 125,
+            VK_UP => 126,
+
+            // Punctuation
+            VK_OEM_PERIOD => 47,  // .
+            VK_OEM_COMMA => 43,   // ,
+            VK_OEM_2 => 44,       // /
+            VK_OEM_1 => 41,       // ;
+            VK_OEM_7 => 39,       // '
+            VK_OEM_4 => 33,       // [
+            VK_OEM_6 => 30,       // ]
+
+            // Unknown - return as-is (will likely be ignored by engine)
+            _ => windowsVK
+        };
+    }
 }

@@ -32,6 +32,18 @@ public static class RustBridge
     private static extern void ime_modern([MarshalAs(UnmanagedType.U1)] bool modern);
 
     [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    private static extern void ime_bracket_shortcut([MarshalAs(UnmanagedType.U1)] bool enabled);
+
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    private static extern void ime_esc_restore([MarshalAs(UnmanagedType.U1)] bool enabled);
+
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    private static extern void ime_english_auto_restore([MarshalAs(UnmanagedType.U1)] bool enabled);
+
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+    private static extern void ime_auto_capitalize([MarshalAs(UnmanagedType.U1)] bool enabled);
+
+    [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr ime_key(ushort keycode, [MarshalAs(UnmanagedType.U1)] bool shift, [MarshalAs(UnmanagedType.U1)] bool capslock);
 
     #endregion
@@ -79,11 +91,47 @@ public static class RustBridge
     }
 
     /// <summary>
+    /// Enable bracket shortcuts (] → ư, [ → ơ)
+    /// </summary>
+    public static void SetBracketShortcut(bool enabled)
+    {
+        ime_bracket_shortcut(enabled);
+    }
+
+    /// <summary>
+    /// Enable ESC key to restore original text
+    /// </summary>
+    public static void SetEscRestore(bool enabled)
+    {
+        ime_esc_restore(enabled);
+    }
+
+    /// <summary>
+    /// Enable auto-restore for English words
+    /// </summary>
+    public static void SetEnglishAutoRestore(bool enabled)
+    {
+        ime_english_auto_restore(enabled);
+    }
+
+    /// <summary>
+    /// Enable auto-capitalize after punctuation
+    /// </summary>
+    public static void SetAutoCapitalize(bool enabled)
+    {
+        ime_auto_capitalize(enabled);
+    }
+
+    /// <summary>
     /// Process a keystroke and get the result
     /// </summary>
     public static ImeResult ProcessKey(ushort keycode, bool shift, bool capslock)
     {
-        IntPtr ptr = ime_key(keycode, shift, capslock);
+        // Convert Windows VK code to macOS keycode for Rust engine
+        ushort macKeyCode = KeyCodes.ToMacKeyCode(keycode);
+
+        // Rust ime_key expects: (key, caps, ctrl) - we pass shift as ctrl=false
+        IntPtr ptr = ime_key(macKeyCode, capslock, false);
         if (ptr == IntPtr.Zero)
         {
             return ImeResult.Empty;

@@ -26,6 +26,7 @@ public static class TextSender
 
     #region Structures
 
+    // INPUT struct size on x64: 4 (type) + 4 (padding) + 24 (union) = 32 bytes
     [StructLayout(LayoutKind.Sequential)]
     private struct INPUT
     {
@@ -33,10 +34,13 @@ public static class TextSender
         public INPUTUNION u;
     }
 
-    [StructLayout(LayoutKind.Explicit)]
+    // Union must be 24 bytes to match MOUSEINPUT (largest member)
+    [StructLayout(LayoutKind.Sequential)]
     private struct INPUTUNION
     {
-        [FieldOffset(0)] public KEYBDINPUT ki;
+        public KEYBDINPUT ki;
+        // Padding to make union 24 bytes (KEYBDINPUT is 16 bytes on x64)
+        private long _padding;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -46,7 +50,7 @@ public static class TextSender
         public ushort wScan;
         public uint dwFlags;
         public uint time;
-        public IntPtr dwExtraInfo;
+        public UIntPtr dwExtraInfo;
     }
 
     #endregion
@@ -194,7 +198,7 @@ public static class TextSender
 
     #region Helper Methods
 
-    private static void AddKeyPress(List<INPUT> inputs, ushort vk, IntPtr marker)
+    private static void AddKeyPress(List<INPUT> inputs, ushort vk, UIntPtr marker)
     {
         // Key down
         inputs.Add(CreateKeyInput(vk, 0, marker));
@@ -202,7 +206,7 @@ public static class TextSender
         inputs.Add(CreateKeyInput(vk, KEYEVENTF_KEYUP, marker));
     }
 
-    private static INPUT CreateKeyInput(ushort vk, uint flags, IntPtr marker)
+    private static INPUT CreateKeyInput(ushort vk, uint flags, UIntPtr marker)
     {
         return new INPUT
         {
@@ -221,7 +225,7 @@ public static class TextSender
         };
     }
 
-    private static void AddUnicodeText(List<INPUT> inputs, string text, IntPtr marker)
+    private static void AddUnicodeText(List<INPUT> inputs, string text, UIntPtr marker)
     {
         foreach (char c in text)
         {
@@ -229,7 +233,7 @@ public static class TextSender
         }
     }
 
-    private static void AddUnicodeChar(List<INPUT> inputs, char c, IntPtr marker)
+    private static void AddUnicodeChar(List<INPUT> inputs, char c, UIntPtr marker)
     {
         // Key down
         inputs.Add(new INPUT

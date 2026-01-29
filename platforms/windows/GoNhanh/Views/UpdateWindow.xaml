@@ -1,0 +1,104 @@
+<Window x:Class="GoNhanh.Views.UpdateWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Kiểm tra cập nhật"
+        Height="380" Width="450"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="{StaticResource BackgroundBrush}">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0">
+            <TextBlock x:Name="TitleText"
+                       FontSize="18"
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource TextBrush}"
+                       Text="Đang kiểm tra cập nhật..."/>
+            <TextBlock x:Name="VersionText"
+                       FontSize="12"
+                       Foreground="{StaticResource SecondaryTextBrush}"
+                       Margin="0,6,0,0"/>
+        </StackPanel>
+
+        <!-- Release Notes -->
+        <Border Grid.Row="1" Margin="0,16,0,0"
+                x:Name="NotesPanel"
+                Visibility="Collapsed"
+                BorderBrush="#E5E7EB"
+                BorderThickness="1"
+                CornerRadius="4"
+                Background="#FAFAFA">
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          Padding="12">
+                <TextBlock x:Name="NotesText"
+                           TextWrapping="Wrap"
+                           FontSize="12"
+                           Foreground="{StaticResource TextBrush}"/>
+            </ScrollViewer>
+        </Border>
+
+        <!-- Status Message (for UpToDate, Error states) -->
+        <StackPanel Grid.Row="1" Margin="0,16,0,0"
+                    x:Name="StatusPanel"
+                    Visibility="Collapsed"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center">
+            <TextBlock x:Name="StatusIcon"
+                       FontSize="48"
+                       HorizontalAlignment="Center"/>
+            <TextBlock x:Name="StatusText"
+                       FontSize="14"
+                       Foreground="{StaticResource SecondaryTextBrush}"
+                       HorizontalAlignment="Center"
+                       TextAlignment="Center"
+                       Margin="0,12,0,0"/>
+        </StackPanel>
+
+        <!-- Progress -->
+        <StackPanel Grid.Row="2" Margin="0,16,0,0"
+                    x:Name="ProgressPanel"
+                    Visibility="Collapsed">
+            <ProgressBar x:Name="ProgressBar"
+                         Height="6"
+                         Minimum="0"
+                         Maximum="100"
+                         Foreground="{StaticResource PrimaryBrush}"/>
+            <TextBlock x:Name="ProgressText"
+                       FontSize="11"
+                       Foreground="{StaticResource SecondaryTextBrush}"
+                       HorizontalAlignment="Center"
+                       Margin="0,6,0,0"/>
+        </StackPanel>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="3"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,20,0,0">
+            <Button x:Name="SkipButton"
+                    Content="Bỏ qua phiên bản này"
+                    Padding="16,8"
+                    Margin="0,0,8,0"
+                    Click="OnSkip"
+                    Visibility="Collapsed"
+                    Background="Transparent"
+                    BorderBrush="#D1D5DB"
+                    Foreground="{StaticResource SecondaryTextBrush}"/>
+            <Button x:Name="ActionButton"
+                    Content="Đóng"
+                    Padding="20,8"
+                    Click="OnAction"
+                    Background="{StaticResource PrimaryBrush}"
+                    Foreground="White"
+                    BorderThickness="0"/>
+        </StackPanel>
+    </Grid>
+</Window>

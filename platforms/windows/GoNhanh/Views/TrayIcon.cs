@@ -26,6 +26,8 @@ public class TrayIcon : IDisposable
     public event Action? OnExitRequested;
     public event Action<InputMethod>? OnMethodChanged;
     public event Action<bool>? OnEnabledChanged;
+    public event Action? OnCheckUpdateRequested;
+    public event Action? OnSettingsRequested;
 
     #endregion
 
@@ -78,6 +80,16 @@ public class TrayIcon : IDisposable
         var feedbackItem = new ToolStripMenuItem("Góp ý && Báo lỗi");
         feedbackItem.Click += (s, e) => OpenFeedback();
         _contextMenu.Items.Add(feedbackItem);
+
+        // Settings
+        var settingsItem = new ToolStripMenuItem("Cài đặt...");
+        settingsItem.Click += (s, e) => OnSettingsRequested?.Invoke();
+        _contextMenu.Items.Add(settingsItem);
+
+        // Check for updates
+        var updateItem = new ToolStripMenuItem("Kiểm tra cập nhật");
+        updateItem.Click += (s, e) => OnCheckUpdateRequested?.Invoke();
+        _contextMenu.Items.Add(updateItem);
 
         _contextMenu.Items.Add(new ToolStripSeparator());
 

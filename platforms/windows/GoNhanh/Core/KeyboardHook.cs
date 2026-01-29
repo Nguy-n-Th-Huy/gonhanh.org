@@ -52,7 +52,7 @@ public class KeyboardHook : IDisposable
         public uint scanCode;
         public uint flags;
         public uint time;
-        public IntPtr dwExtraInfo;
+        public UIntPtr dwExtraInfo;
     }
 
     #endregion
@@ -67,7 +67,7 @@ public class KeyboardHook : IDisposable
     private bool _isProcessing;
 
     // Identifier for our injected keys (to skip processing them)
-    private static readonly IntPtr InjectedKeyMarker = new IntPtr(0x474E4820); // "GNH " in hex
+    private static readonly UIntPtr InjectedKeyMarker = new UIntPtr(0x474E4820); // "GNH " in hex
 
     // Custom shortcuts
     private KeyboardShortcut _toggleShortcut = KeyboardShortcut.DefaultToggle;
@@ -281,7 +281,7 @@ public class KeyboardHook : IDisposable
     /// <summary>
     /// Get the marker used to identify injected keys from this application
     /// </summary>
-    public static IntPtr GetInjectedKeyMarker() => InjectedKeyMarker;
+    public static UIntPtr GetInjectedKeyMarker() => InjectedKeyMarker;
 }
 
 /// <summary>
