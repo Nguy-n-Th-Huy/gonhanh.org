@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.InteropServices;
 
 namespace GoNhanh.Core;
@@ -66,8 +67,38 @@ public static class TextSender
 
     /// <summary>
     /// Send text replacement with specified injection method and delays
+    /// Special handling: if text ends with Enter, send it immediately without delay
     /// </summary>
     public static void SendText(string text, int backspaces, InjectionMethod method, InjectionDelays delays)
+    {
+        if ((string.IsNullOrEmpty(text) || text.Length == 0) && backspaces == 0)
+            return;
+
+        // Check if text ends with Enter (newline character)
+        bool endsWithEnter = !string.IsNullOrEmpty(text) && text.EndsWith("\n");
+
+        if (endsWithEnter)
+        {
+            // Send text without Enter first (with delays)
+            string textWithoutEnter = text.Substring(0, text.Length - 1);
+            if (!string.IsNullOrEmpty(textWithoutEnter) || backspaces > 0)
+            {
+                SendTextInternal(textWithoutEnter, backspaces, method, delays);
+            }
+
+            // Send Enter immediately without delay
+            SendEnterKey();
+        }
+        else
+        {
+            SendTextInternal(text, backspaces, method, delays);
+        }
+    }
+
+    /// <summary>
+    /// Internal method to send text with specified injection method and delays
+    /// </summary>
+    private static void SendTextInternal(string text, int backspaces, InjectionMethod method, InjectionDelays delays)
     {
         if ((string.IsNullOrEmpty(text) || text.Length == 0) && backspaces == 0)
             return;
@@ -86,6 +117,22 @@ public static class TextSender
                 SendViaBackspace(text, backspaces, delays);
                 break;
         }
+    }
+
+    /// <summary>
+    /// Send Enter key immediately without any delay
+    /// Used for word boundary shortcuts and auto-restore
+    /// </summary>
+    private static void SendEnterKey()
+    {
+        var inputs = new List<INPUT>();
+        var marker = KeyboardHook.GetInjectedKeyMarker();
+
+        // Enter key: scancode 0x1C
+        inputs.Add(CreateScanCodeInput(0x1C, 0, marker));
+        inputs.Add(CreateScanCodeInput(0x1C, KEYEVENTF_KEYUP, marker));
+
+        SendInputs(inputs);
     }
 
     /// <summary>
@@ -185,15 +232,21 @@ public static class TextSender
         if (backspaces > 0 && delays.WaitDelayMs > 0)
             Thread.Sleep(delays.WaitDelayMs);
 
-        // Send text character by character
-        foreach (char c in text)
+        // Send text character by character using StringInfo to handle surrogate pairs
+        var enumerator = StringInfo.GetTextElementEnumerator(text);
+        while (enumerator.MoveNext())
         {
-            var inputs = new List<INPUT>();
-            AddUnicodeChar(inputs, c, marker);
-            SendInputs(inputs);
+            string element = enumerator.GetTextElement();
+            if (!string.IsNullOrEmpty(element))
+            {
+                var inputs = new List<INPUT>();
+                int codepoint = char.ConvertToUtf32(element, 0);
+                AddUnicodeCharByCodepoint(inputs, codepoint, marker);
+                SendInputs(inputs);
 
-            if (delays.TextDelayMs > 0)
-                Thread.Sleep(delays.TextDelayMs);
+                if (delays.TextDelayMs > 0)
+                    Thread.Sleep(delays.TextDelayMs);
+            }
         }
     }
 
@@ -256,47 +309,140 @@ public static class TextSender
 
     private static void AddUnicodeText(List<INPUT> inputs, string text, UIntPtr marker)
     {
-        foreach (char c in text)
+        // Use StringInfo to properly handle surrogate pairs and grapheme clusters
+        // This prevents splitting UTF-16 surrogate pairs which causes character corruption
+        var enumerator = StringInfo.GetTextElementEnumerator(text);
+        while (enumerator.MoveNext())
         {
-            AddUnicodeChar(inputs, c, marker);
+            string element = enumerator.GetTextElement();
+            // Convert each grapheme cluster (which may be multiple UTF-16 chars) to UTF-32 codepoint
+            if (!string.IsNullOrEmpty(element))
+            {
+                // Get the first (and usually only) character from the element
+                // StringInfo handles surrogate pairs correctly
+                int codepoint = char.ConvertToUtf32(element, 0);
+                AddUnicodeCharByCodepoint(inputs, codepoint, marker);
+            }
         }
     }
 
-    private static void AddUnicodeChar(List<INPUT> inputs, char c, UIntPtr marker)
+    private static void AddUnicodeCharByCodepoint(List<INPUT> inputs, int codepoint, UIntPtr marker)
     {
-        // Key down
-        inputs.Add(new INPUT
+        // For Unicode characters > U+FFFF, we need to send them as UTF-16 surrogate pairs
+        // Windows SendInput with KEYEVENTF_UNICODE expects UTF-16 code units
+        if (codepoint <= 0xFFFF)
         {
-            type = INPUT_KEYBOARD,
-            u = new INPUTUNION
-            {
-                ki = new KEYBDINPUT
-                {
-                    wVk = 0,
-                    wScan = c,
-                    dwFlags = KEYEVENTF_UNICODE,
-                    time = 0,
-                    dwExtraInfo = marker
-                }
-            }
-        });
+            // BMP character - single UTF-16 code unit
+            ushort utf16 = (ushort)codepoint;
 
-        // Key up
-        inputs.Add(new INPUT
-        {
-            type = INPUT_KEYBOARD,
-            u = new INPUTUNION
+            // Key down
+            inputs.Add(new INPUT
             {
-                ki = new KEYBDINPUT
+                type = INPUT_KEYBOARD,
+                u = new INPUTUNION
                 {
-                    wVk = 0,
-                    wScan = c,
-                    dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP,
-                    time = 0,
-                    dwExtraInfo = marker
+                    ki = new KEYBDINPUT
+                    {
+                        wVk = 0,
+                        wScan = utf16,
+                        dwFlags = KEYEVENTF_UNICODE,
+                        time = 0,
+                        dwExtraInfo = marker
+                    }
                 }
-            }
-        });
+            });
+
+            // Key up
+            inputs.Add(new INPUT
+            {
+                type = INPUT_KEYBOARD,
+                u = new INPUTUNION
+                {
+                    ki = new KEYBDINPUT
+                    {
+                        wVk = 0,
+                        wScan = utf16,
+                        dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP,
+                        time = 0,
+                        dwExtraInfo = marker
+                    }
+                }
+            });
+        }
+        else
+        {
+            // Supplementary character - convert to UTF-16 surrogate pair
+            // Formula: codepoint = 0x10000 + (high - 0xD800) * 0x400 + (low - 0xDC00)
+            codepoint -= 0x10000;
+            ushort high = (ushort)(0xD800 + (codepoint >> 10));
+            ushort low = (ushort)(0xDC00 + (codepoint & 0x3FF));
+
+            // Send high surrogate
+            inputs.Add(new INPUT
+            {
+                type = INPUT_KEYBOARD,
+                u = new INPUTUNION
+                {
+                    ki = new KEYBDINPUT
+                    {
+                        wVk = 0,
+                        wScan = high,
+                        dwFlags = KEYEVENTF_UNICODE,
+                        time = 0,
+                        dwExtraInfo = marker
+                    }
+                }
+            });
+
+            inputs.Add(new INPUT
+            {
+                type = INPUT_KEYBOARD,
+                u = new INPUTUNION
+                {
+                    ki = new KEYBDINPUT
+                    {
+                        wVk = 0,
+                        wScan = high,
+                        dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP,
+                        time = 0,
+                        dwExtraInfo = marker
+                    }
+                }
+            });
+
+            // Send low surrogate
+            inputs.Add(new INPUT
+            {
+                type = INPUT_KEYBOARD,
+                u = new INPUTUNION
+                {
+                    ki = new KEYBDINPUT
+                    {
+                        wVk = 0,
+                        wScan = low,
+                        dwFlags = KEYEVENTF_UNICODE,
+                        time = 0,
+                        dwExtraInfo = marker
+                    }
+                }
+            });
+
+            inputs.Add(new INPUT
+            {
+                type = INPUT_KEYBOARD,
+                u = new INPUTUNION
+                {
+                    ki = new KEYBDINPUT
+                    {
+                        wVk = 0,
+                        wScan = low,
+                        dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP,
+                        time = 0,
+                        dwExtraInfo = marker
+                    }
+                }
+            });
+        }
     }
 
     private static void SendInputs(List<INPUT> inputs)

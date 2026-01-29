@@ -38,11 +38,11 @@ public readonly struct InjectionDelays
     public int WaitDelayMs => WaitDelayUs > 0 ? (WaitDelayUs + 999) / 1000 : 0;
     public int TextDelayMs => TextDelayUs > 0 ? (TextDelayUs + 999) / 1000 : 0;
 
-    public static InjectionDelays Fast => new(1000, 2000, 1000);
-    public static InjectionDelays Default => new(2000, 5000, 2000);
-    public static InjectionDelays Slow => new(5000, 10000, 5000);
-    public static InjectionDelays Electron => new(10000, 30000, 10000);
-    public static InjectionDelays Browser => new(15000, 50000, 15000);
+    public static InjectionDelays Fast => new(1000, 50000, 1000);
+    public static InjectionDelays Default => new(2000, 60000, 2000);
+    public static InjectionDelays Slow => new(5000, 70000, 5000);
+    public static InjectionDelays Electron => new(10000, 75000, 10000);
+    public static InjectionDelays Browser => new(15000, 80000, 15000);
 }
 
 /// <summary>
