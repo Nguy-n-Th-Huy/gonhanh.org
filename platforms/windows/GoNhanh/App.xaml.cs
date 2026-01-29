@@ -14,6 +14,7 @@ public partial class App : System.Windows.Application
 {
     private TrayIcon? _trayIcon;
     private KeyboardHook? _keyboardHook;
+    private PerAppModeManager? _perAppModeManager;
     private readonly SettingsService _settings = new();
     private System.Threading.Mutex? _mutex;
 
@@ -34,6 +35,12 @@ public partial class App : System.Windows.Application
         // Load settings
         _settings.Load();
         ApplySettings();
+
+        // Initialize per-app mode manager
+        _perAppModeManager = new PerAppModeManager(_settings);
+        _perAppModeManager.IsEnabled = _settings.PerAppModeEnabled;
+        _perAppModeManager.OnStateRestored += OnPerAppStateRestored;
+        _perAppModeManager.Start();
 
         // Initialize keyboard hook
         _keyboardHook = new KeyboardHook();
@@ -124,10 +131,16 @@ public partial class App : System.Windows.Application
         RustBridge.SetEnabled(enabled);
     }
 
+    private void OnPerAppStateRestored(bool enabled)
+    {
+        _trayIcon?.UpdateState(_settings.CurrentMethod, enabled);
+    }
+
     private void ExitApplication()
     {
         _keyboardHook?.Stop();
         _keyboardHook?.Dispose();
+        _perAppModeManager?.Dispose();
         _trayIcon?.Dispose();
         RustBridge.Clear();
         _mutex?.Dispose();
@@ -137,6 +150,7 @@ public partial class App : System.Windows.Application
     protected override void OnExit(ExitEventArgs e)
     {
         _keyboardHook?.Dispose();
+        _perAppModeManager?.Dispose();
         _trayIcon?.Dispose();
         _mutex?.Dispose();
         base.OnExit(e);
