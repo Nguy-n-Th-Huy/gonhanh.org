@@ -5,6 +5,7 @@ namespace GoNhanh.Core;
 /// <summary>
 /// Sends text to the active window using Windows SendInput API
 /// Handles backspace deletion and Unicode character insertion
+/// Supports multiple injection methods for different applications
 /// </summary>
 public static class TextSender
 {
@@ -51,99 +52,228 @@ public static class TextSender
     #endregion
 
     /// <summary>
-    /// Send text replacement: delete characters and insert new text
+    /// Send text replacement using default fast method (backward compatible)
     /// </summary>
-    /// <param name="text">Text to insert</param>
-    /// <param name="backspaces">Number of backspaces to send first</param>
     public static void SendText(string text, int backspaces)
     {
-        if (string.IsNullOrEmpty(text) && backspaces == 0)
+        SendText(text, backspaces, InjectionMethod.Fast, InjectionDelays.Fast);
+    }
+
+    /// <summary>
+    /// Send text replacement with specified injection method and delays
+    /// </summary>
+    public static void SendText(string text, int backspaces, InjectionMethod method, InjectionDelays delays)
+    {
+        if ((string.IsNullOrEmpty(text) || text.Length == 0) && backspaces == 0)
             return;
 
+        switch (method)
+        {
+            case InjectionMethod.Selection:
+                SendViaSelection(text, backspaces, delays);
+                break;
+            case InjectionMethod.CharByChar:
+                SendCharByChar(text, backspaces, delays);
+                break;
+            case InjectionMethod.Slow:
+            case InjectionMethod.Fast:
+            default:
+                SendViaBackspace(text, backspaces, delays);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Default method: send backspaces then text (with optional delays)
+    /// </summary>
+    private static void SendViaBackspace(string text, int backspaces, InjectionDelays delays)
+    {
         var inputs = new List<INPUT>();
         var marker = KeyboardHook.GetInjectedKeyMarker();
 
-        // Add backspaces
+        // Add backspaces with delays
         for (int i = 0; i < backspaces; i++)
         {
-            // Key down
-            inputs.Add(new INPUT
-            {
-                type = INPUT_KEYBOARD,
-                u = new INPUTUNION
-                {
-                    ki = new KEYBDINPUT
-                    {
-                        wVk = KeyCodes.VK_BACK,
-                        wScan = 0,
-                        dwFlags = 0,
-                        time = 0,
-                        dwExtraInfo = marker
-                    }
-                }
-            });
+            AddKeyPress(inputs, KeyCodes.VK_BACK, marker);
 
-            // Key up
-            inputs.Add(new INPUT
+            if (i < backspaces - 1 && delays.BackspaceDelayMs > 0)
             {
-                type = INPUT_KEYBOARD,
-                u = new INPUTUNION
-                {
-                    ki = new KEYBDINPUT
-                    {
-                        wVk = KeyCodes.VK_BACK,
-                        wScan = 0,
-                        dwFlags = KEYEVENTF_KEYUP,
-                        time = 0,
-                        dwExtraInfo = marker
-                    }
-                }
-            });
+                // Send current batch, wait, then continue
+                SendInputs(inputs);
+                inputs.Clear();
+                Thread.Sleep(delays.BackspaceDelayMs);
+            }
         }
 
-        // Add text characters (Unicode)
+        // Wait between backspaces and text
+        if (backspaces > 0 && delays.WaitDelayMs > 0)
+        {
+            SendInputs(inputs);
+            inputs.Clear();
+            Thread.Sleep(delays.WaitDelayMs);
+        }
+
+        // Add text characters
+        AddUnicodeText(inputs, text, marker);
+
+        SendInputs(inputs);
+    }
+
+    /// <summary>
+    /// Selection method: use Shift+Left to select then type replacement
+    /// Better for browser address bars and some text fields
+    /// </summary>
+    private static void SendViaSelection(string text, int backspaces, InjectionDelays delays)
+    {
+        var marker = KeyboardHook.GetInjectedKeyMarker();
+
+        // Select text with Shift+Left for each character to delete
+        for (int i = 0; i < backspaces; i++)
+        {
+            var inputs = new List<INPUT>();
+
+            // Shift down
+            inputs.Add(CreateKeyInput(KeyCodes.VK_SHIFT, 0, marker));
+            // Left arrow down
+            inputs.Add(CreateKeyInput(KeyCodes.VK_LEFT, 0, marker));
+            // Left arrow up
+            inputs.Add(CreateKeyInput(KeyCodes.VK_LEFT, KEYEVENTF_KEYUP, marker));
+            // Shift up
+            inputs.Add(CreateKeyInput(KeyCodes.VK_SHIFT, KEYEVENTF_KEYUP, marker));
+
+            SendInputs(inputs);
+
+            if (delays.BackspaceDelayMs > 0)
+                Thread.Sleep(delays.BackspaceDelayMs);
+        }
+
+        // Wait before typing
+        if (backspaces > 0 && delays.WaitDelayMs > 0)
+            Thread.Sleep(delays.WaitDelayMs);
+
+        // Type replacement text (replaces selection)
+        var textInputs = new List<INPUT>();
+        AddUnicodeText(textInputs, text, marker);
+        SendInputs(textInputs);
+    }
+
+    /// <summary>
+    /// Character-by-character method: send one char at a time with delays
+    /// For problematic apps that can't handle fast input
+    /// </summary>
+    private static void SendCharByChar(string text, int backspaces, InjectionDelays delays)
+    {
+        var marker = KeyboardHook.GetInjectedKeyMarker();
+
+        // Send backspaces one at a time
+        for (int i = 0; i < backspaces; i++)
+        {
+            var inputs = new List<INPUT>();
+            AddKeyPress(inputs, KeyCodes.VK_BACK, marker);
+            SendInputs(inputs);
+
+            if (delays.BackspaceDelayMs > 0)
+                Thread.Sleep(delays.BackspaceDelayMs);
+        }
+
+        // Wait between backspaces and text
+        if (backspaces > 0 && delays.WaitDelayMs > 0)
+            Thread.Sleep(delays.WaitDelayMs);
+
+        // Send text character by character
         foreach (char c in text)
         {
-            // For Unicode characters, use wScan with KEYEVENTF_UNICODE flag
-            // Key down
-            inputs.Add(new INPUT
-            {
-                type = INPUT_KEYBOARD,
-                u = new INPUTUNION
-                {
-                    ki = new KEYBDINPUT
-                    {
-                        wVk = 0,
-                        wScan = c,
-                        dwFlags = KEYEVENTF_UNICODE,
-                        time = 0,
-                        dwExtraInfo = marker
-                    }
-                }
-            });
+            var inputs = new List<INPUT>();
+            AddUnicodeChar(inputs, c, marker);
+            SendInputs(inputs);
 
-            // Key up
-            inputs.Add(new INPUT
-            {
-                type = INPUT_KEYBOARD,
-                u = new INPUTUNION
-                {
-                    ki = new KEYBDINPUT
-                    {
-                        wVk = 0,
-                        wScan = c,
-                        dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP,
-                        time = 0,
-                        dwExtraInfo = marker
-                    }
-                }
-            });
+            if (delays.TextDelayMs > 0)
+                Thread.Sleep(delays.TextDelayMs);
         }
+    }
 
+    #region Helper Methods
+
+    private static void AddKeyPress(List<INPUT> inputs, ushort vk, IntPtr marker)
+    {
+        // Key down
+        inputs.Add(CreateKeyInput(vk, 0, marker));
+        // Key up
+        inputs.Add(CreateKeyInput(vk, KEYEVENTF_KEYUP, marker));
+    }
+
+    private static INPUT CreateKeyInput(ushort vk, uint flags, IntPtr marker)
+    {
+        return new INPUT
+        {
+            type = INPUT_KEYBOARD,
+            u = new INPUTUNION
+            {
+                ki = new KEYBDINPUT
+                {
+                    wVk = vk,
+                    wScan = 0,
+                    dwFlags = flags,
+                    time = 0,
+                    dwExtraInfo = marker
+                }
+            }
+        };
+    }
+
+    private static void AddUnicodeText(List<INPUT> inputs, string text, IntPtr marker)
+    {
+        foreach (char c in text)
+        {
+            AddUnicodeChar(inputs, c, marker);
+        }
+    }
+
+    private static void AddUnicodeChar(List<INPUT> inputs, char c, IntPtr marker)
+    {
+        // Key down
+        inputs.Add(new INPUT
+        {
+            type = INPUT_KEYBOARD,
+            u = new INPUTUNION
+            {
+                ki = new KEYBDINPUT
+                {
+                    wVk = 0,
+                    wScan = c,
+                    dwFlags = KEYEVENTF_UNICODE,
+                    time = 0,
+                    dwExtraInfo = marker
+                }
+            }
+        });
+
+        // Key up
+        inputs.Add(new INPUT
+        {
+            type = INPUT_KEYBOARD,
+            u = new INPUTUNION
+            {
+                ki = new KEYBDINPUT
+                {
+                    wVk = 0,
+                    wScan = c,
+                    dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP,
+                    time = 0,
+                    dwExtraInfo = marker
+                }
+            }
+        });
+    }
+
+    private static void SendInputs(List<INPUT> inputs)
+    {
         if (inputs.Count > 0)
         {
             var inputArray = inputs.ToArray();
             SendInput((uint)inputArray.Length, inputArray, Marshal.SizeOf<INPUT>());
         }
     }
+
+    #endregion
 }

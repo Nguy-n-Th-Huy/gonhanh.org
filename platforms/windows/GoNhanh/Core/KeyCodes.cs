@@ -58,6 +58,12 @@ public static class KeyCodes
     public const ushort VK_ESCAPE = 0x1B;
     public const ushort VK_SPACE = 0x20;
 
+    // Arrow keys
+    public const ushort VK_LEFT = 0x25;
+    public const ushort VK_UP = 0x26;
+    public const ushort VK_RIGHT = 0x27;
+    public const ushort VK_DOWN = 0x28;
+
     // Punctuation (US keyboard layout)
     public const ushort VK_OEM_1 = 0xBA;     // ;:
     public const ushort VK_OEM_PLUS = 0xBB;  // =+

@@ -80,17 +80,20 @@ public partial class App : System.Windows.Application
     {
         if (!_settings.IsEnabled) return;
 
+        // Detect appropriate injection method for current app
+        var (method, delays) = AppDetector.DetectMethod();
+
         var result = RustBridge.ProcessKey(e.VirtualKeyCode, e.Shift, e.CapsLock);
 
         if (result.Action == ImeAction.Send && result.Count > 0)
         {
             e.Handled = true;
-            TextSender.SendText(result.GetText(), result.Backspace);
+            TextSender.SendText(result.GetText(), result.Backspace, method, delays);
         }
         else if (result.Action == ImeAction.Restore)
         {
             e.Handled = true;
-            TextSender.SendText(result.GetText(), result.Backspace);
+            TextSender.SendText(result.GetText(), result.Backspace, method, delays);
         }
     }
 
