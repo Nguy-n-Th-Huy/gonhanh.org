@@ -2921,6 +2921,23 @@ impl Engine {
                                              // Rebuild from the earlier position if compound was formed
             let mut rebuild_pos = rebuild_from_compound.map_or(pos, |cp| cp.min(pos));
 
+            // Issue: When placing mark on vowel in existing ươ compound, need to rebuild
+            // from the start of compound (ư position), not just the marked vowel (ơ position).
+            // Example: "nươc" + 's' → mark on ơ at pos 2, but need to rebuild from pos 1 (ư)
+            // to output "ước" (3 chars) instead of just "ớc" (2 chars).
+            if pos > 0 {
+                if let (Some(prev), Some(curr)) = (self.buf.get(pos - 1), self.buf.get(pos)) {
+                    // Check for ươ compound (both U and O have horn)
+                    let is_uo_compound = prev.key == keys::U
+                        && prev.tone == tone::HORN
+                        && curr.key == keys::O
+                        && curr.tone == tone::HORN;
+                    if is_uo_compound {
+                        rebuild_pos = rebuild_pos.min(pos - 1);
+                    }
+                }
+            }
+
             // If delayed stroke was applied, rebuild from position 0
             // and add extra backspace for the trigger 'd' that was on screen
             if had_delayed_stroke {
