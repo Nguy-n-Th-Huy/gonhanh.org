@@ -21,6 +21,9 @@ public class SettingsService
     private const string KeyFirstRun = "FirstRun";
     private const string KeyAutoStart = "AutoStart";
     private const string KeyPerAppMode = "PerAppMode";
+    private const string KeyToggleShortcut = "ToggleShortcut";
+    private const string KeyRestoreShortcut = "RestoreShortcut";
+    private const string KeyRestoreShortcutEnabled = "RestoreShortcutEnabled";
 
     #endregion
 
@@ -32,6 +35,9 @@ public class SettingsService
     public bool IsFirstRun { get; set; } = true;
     public bool AutoStart { get; set; } = false;
     public bool PerAppModeEnabled { get; set; } = false;
+    public KeyboardShortcut ToggleShortcut { get; set; } = KeyboardShortcut.DefaultToggle;
+    public KeyboardShortcut RestoreShortcut { get; set; } = KeyboardShortcut.DefaultRestore;
+    public bool RestoreShortcutEnabled { get; set; } = true;
 
     #endregion
 
@@ -58,6 +64,11 @@ public class SettingsService
             IsFirstRun = ((int)(key.GetValue(KeyFirstRun, 1) ?? 1)) == 1;
             AutoStart = ((int)(key.GetValue(KeyAutoStart, 0) ?? 0)) == 1;
             PerAppModeEnabled = ((int)(key.GetValue(KeyPerAppMode, 0) ?? 0)) == 1;
+            RestoreShortcutEnabled = ((int)(key.GetValue(KeyRestoreShortcutEnabled, 1) ?? 1)) == 1;
+
+            // Load shortcuts (use KeyboardShortcut's own Load method)
+            ToggleShortcut = KeyboardShortcut.Load(KeyToggleShortcut, KeyboardShortcut.DefaultToggle);
+            RestoreShortcut = KeyboardShortcut.Load(KeyRestoreShortcut, KeyboardShortcut.DefaultRestore);
         }
         catch (Exception ex)
         {
@@ -81,7 +92,12 @@ public class SettingsService
                 key.SetValue(KeyFirstRun, IsFirstRun ? 1 : 0, RegistryValueKind.DWord);
                 key.SetValue(KeyAutoStart, AutoStart ? 1 : 0, RegistryValueKind.DWord);
                 key.SetValue(KeyPerAppMode, PerAppModeEnabled ? 1 : 0, RegistryValueKind.DWord);
+                key.SetValue(KeyRestoreShortcutEnabled, RestoreShortcutEnabled ? 1 : 0, RegistryValueKind.DWord);
             }
+
+            // Save shortcuts (use KeyboardShortcut's own Save method)
+            ToggleShortcut.Save(KeyToggleShortcut);
+            RestoreShortcut.Save(KeyRestoreShortcut);
 
             // Update auto-start registry
             UpdateAutoStart();

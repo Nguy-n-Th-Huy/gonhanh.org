@@ -45,6 +45,14 @@ public partial class App : System.Windows.Application
         // Initialize keyboard hook
         _keyboardHook = new KeyboardHook();
         _keyboardHook.KeyPressed += OnKeyPressed;
+        _keyboardHook.ToggleRequested += OnToggleRequested;
+        _keyboardHook.RestoreRequested += OnRestoreRequested;
+
+        // Apply shortcut settings to keyboard hook
+        _keyboardHook.SetToggleShortcut(_settings.ToggleShortcut);
+        _keyboardHook.SetRestoreShortcut(_settings.RestoreShortcut);
+        _keyboardHook.SetRestoreShortcutEnabled(_settings.RestoreShortcutEnabled);
+
         _keyboardHook.Start();
 
         // Initialize system tray
@@ -129,6 +137,24 @@ public partial class App : System.Windows.Application
         _settings.IsEnabled = enabled;
         _settings.Save();
         RustBridge.SetEnabled(enabled);
+    }
+
+    private void OnToggleRequested(object? sender, EventArgs e)
+    {
+        // Toggle IME enabled state via shortcut (e.g., Ctrl+Space)
+        var newState = !_settings.IsEnabled;
+        _settings.IsEnabled = newState;
+        _settings.Save();
+        RustBridge.SetEnabled(newState);
+        RustBridge.Clear(); // Clear buffer on toggle
+        _trayIcon?.UpdateState(_settings.CurrentMethod, newState);
+    }
+
+    private void OnRestoreRequested(object? sender, EventArgs e)
+    {
+        // Restore original text via shortcut (e.g., ESC)
+        // This triggers the Rust engine's restore functionality
+        RustBridge.Clear();
     }
 
     private void OnPerAppStateRestored(bool enabled)

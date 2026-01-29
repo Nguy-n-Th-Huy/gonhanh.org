@@ -69,11 +69,31 @@ public class KeyboardHook : IDisposable
     // Identifier for our injected keys (to skip processing them)
     private static readonly IntPtr InjectedKeyMarker = new IntPtr(0x474E4820); // "GNH " in hex
 
+    // Custom shortcuts
+    private KeyboardShortcut _toggleShortcut = KeyboardShortcut.DefaultToggle;
+    private KeyboardShortcut _restoreShortcut = KeyboardShortcut.DefaultRestore;
+    private bool _restoreShortcutEnabled = true;
+
     #endregion
 
     #region Events
 
     public event EventHandler<KeyPressedEventArgs>? KeyPressed;
+    public event EventHandler? ToggleRequested;
+    public event EventHandler? RestoreRequested;
+
+    #endregion
+
+    #region Shortcut Configuration
+
+    /// <summary>Set the toggle shortcut (e.g., Ctrl+Space)</summary>
+    public void SetToggleShortcut(KeyboardShortcut shortcut) => _toggleShortcut = shortcut;
+
+    /// <summary>Set the restore shortcut (e.g., ESC)</summary>
+    public void SetRestoreShortcut(KeyboardShortcut shortcut) => _restoreShortcut = shortcut;
+
+    /// <summary>Enable/disable the restore shortcut</summary>
+    public void SetRestoreShortcutEnabled(bool enabled) => _restoreShortcutEnabled = enabled;
 
     #endregion
 
@@ -146,6 +166,28 @@ public class KeyboardHook : IDisposable
 
             ushort keyCode = (ushort)hookStruct.vkCode;
 
+            // Get modifier states for shortcut checking
+            bool ctrl = IsKeyDown(KeyCodes.VK_CONTROL);
+            bool alt = IsKeyDown(KeyCodes.VK_MENU);
+            bool shift = IsKeyDown(KeyCodes.VK_SHIFT);
+
+            // Check toggle shortcut (e.g., Ctrl+Space)
+            if (_toggleShortcut.Matches(keyCode, ctrl, alt, shift))
+            {
+                ToggleRequested?.Invoke(this, EventArgs.Empty);
+                return (IntPtr)1; // Block key
+            }
+
+            // Check restore shortcut (e.g., ESC) - only if enabled
+            // Note: ESC is NOT blocked - it passes through after triggering restore
+            // This allows ESC to still work for canceling dialogs, closing menus, etc.
+            if (_restoreShortcutEnabled && _restoreShortcut.Matches(keyCode, ctrl, alt, shift))
+            {
+                RestoreRequested?.Invoke(this, EventArgs.Empty);
+                // Don't block ESC - let it pass through after triggering restore
+                return CallNextHookEx(_hookId, nCode, wParam, lParam);
+            }
+
             // Issue #150: Control key alone clears buffer (rhythm break like EVKey)
             if (keyCode == KeyCodes.VK_CONTROL)
             {
@@ -156,10 +198,7 @@ public class KeyboardHook : IDisposable
             // Only process relevant keys for Vietnamese input
             if (KeyCodes.IsRelevantKey(keyCode))
             {
-                bool shift = IsKeyDown(KeyCodes.VK_SHIFT);
                 bool capsLock = IsCapsLockOn();
-                bool ctrl = IsKeyDown(KeyCodes.VK_CONTROL);
-                bool alt = IsKeyDown(KeyCodes.VK_MENU);
 
                 // Skip if Ctrl or Alt is pressed (shortcuts)
                 if (ctrl || alt)
