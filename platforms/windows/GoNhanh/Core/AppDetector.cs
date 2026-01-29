@@ -38,10 +38,10 @@ public readonly struct InjectionDelays
     public int WaitDelayMs => WaitDelayUs > 0 ? (WaitDelayUs + 999) / 1000 : 0;
     public int TextDelayMs => TextDelayUs > 0 ? (TextDelayUs + 999) / 1000 : 0;
 
-    public static InjectionDelays Fast => new(200, 800, 500);
-    public static InjectionDelays Default => new(1000, 3000, 1500);
-    public static InjectionDelays Slow => new(3000, 8000, 3000);
-    public static InjectionDelays Electron => new(8000, 25000, 8000);
+    public static InjectionDelays Fast => new(1000, 2000, 1000);
+    public static InjectionDelays Default => new(2000, 5000, 2000);
+    public static InjectionDelays Slow => new(5000, 10000, 5000);
+    public static InjectionDelays Electron => new(10000, 30000, 10000);
 }
 
 /// <summary>
@@ -82,9 +82,9 @@ public static class AppDetector
             "wezterm" or "wezterm-gui" or "alacritty" or "hyper" or "conemu64" =>
                 (InjectionMethod.Slow, InjectionDelays.Electron),
 
-            // Browsers - use selection method for address bar compatibility
+            // Browsers - use slow method with higher delays
             "chrome" or "msedge" or "firefox" or "brave" or "opera" or "vivaldi" or "arc" =>
-                (InjectionMethod.Selection, InjectionDelays.Default),
+                (InjectionMethod.Slow, InjectionDelays.Slow),
 
             // Office apps - moderate delays
             "winword" or "excel" or "powerpnt" or "outlook" =>
