@@ -10,13 +10,14 @@
 </p>
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-macOS-000000?logo=apple&logoColor=white" />
+  <img src="https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows&logoColor=white" />
   <img src="https://img.shields.io/badge/Platform-Linux-FCC624?logo=linux&logoColor=black" />
   <img src="https://img.shields.io/badge/License-BSD--3--Clause-blue.svg" alt="License: BSD-3-Clause">
   <img src="https://github.com/khaphanspace/gonhanh.org/actions/workflows/ci.yml/badge.svg" alt="CI">
 </p>
 
 <p align="center">
-  <strong>Bộ gõ tiếng Việt miễn phí, nhanh, ổn định cho macOS.</strong><br>
+  <strong>Bộ gõ tiếng Việt miễn phí, nhanh, ổn định cho macOS & Windows.</strong><br>
   Cài là dùng. Không quảng cáo. Không thu thập dữ liệu.
 </p>
 
@@ -41,8 +42,27 @@ brew install --cask gonhanh
 | Nền tảng | Trạng thái | Tải xuống | Hướng dẫn |
 |:--------:|:----------:|:---------:|:----------|
 | **macOS** | ✅ Sẵn sàng | [📥 Tải GoNhanh.dmg](https://github.com/khaphanspace/gonhanh.org/releases/latest/download/GoNhanh.dmg) | [Xem hướng dẫn](docs/install-macos.md) |
+| **Windows** | ✅ Sẵn sàng | [📥 Tải GoNhanh-Windows-x64.zip](https://github.com/khaphanspace/gonhanh.org/releases/latest/download/GoNhanh-Windows-x64.zip) | [Xem hướng dẫn](#-cài-đặt-windows) |
 | **Linux** | 🧪 Beta | — | [Xem hướng dẫn](docs/install-linux.md) |
-| **Windows** | 🧪 Beta | — | [Xem hướng dẫn](docs/install-windows.md) |
+
+<details>
+<summary><strong>🪟 Cài đặt Windows</strong></summary>
+
+**Yêu cầu:** Windows 10/11 (64-bit), .NET 8.0 Runtime
+
+1. Tải [GoNhanh-Windows-x64.zip](https://github.com/khaphanspace/gonhanh.org/releases/latest/download/GoNhanh-Windows-x64.zip)
+2. Giải nén vào thư mục bất kỳ (ví dụ: `C:\Program Files\GoNhanh`)
+3. Chạy `GoNhanh.exe`
+4. App sẽ xuất hiện trong khay hệ thống (system tray)
+
+**Phím tắt mặc định:**
+- `Ctrl+Space` — Bật/tắt bộ gõ
+- `Ctrl+1` — Chuyển sang Telex
+- `Ctrl+2` — Chuyển sang VNI
+
+**Cài đặt:** Click phải vào icon trong system tray → "Cài đặt..."
+
+</details>
 
 <details>
 <summary><strong>⚠️ macOS: App không mở được?</strong></summary>
