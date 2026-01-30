@@ -91,6 +91,7 @@ public partial class App : System.Windows.Application
         RustBridge.SetMethod(_settings.CurrentMethod);
         RustBridge.SetEnabled(_settings.IsEnabled);
         RustBridge.SetModernTone(_settings.UseModernTone);
+        RustBridge.SetEnglishAutoRestore(true); // Enable auto-restore for English words
     }
 
     private void OnKeyPressed(object? sender, KeyPressedEventArgs e)
