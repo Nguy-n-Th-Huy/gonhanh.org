@@ -42,7 +42,7 @@ brew install --cask gonhanh
 | Nền tảng | Trạng thái | Tải xuống | Hướng dẫn |
 |:--------:|:----------:|:---------:|:----------|
 | **macOS** | ✅ Sẵn sàng | [📥 Tải GoNhanh.dmg](https://github.com/khaphanspace/gonhanh.org/releases/latest/download/GoNhanh.dmg) | [Xem hướng dẫn](docs/install-macos.md) |
-| **Windows** | ✅ Sẵn sàng | [📥 Tải GoNhanh-Windows-x64.zip](https://github.com/khaphanspace/gonhanh.org/releases/latest/download/GoNhanh-Windows-x64.zip) | [Xem hướng dẫn](#-cài-đặt-windows) |
+| **Windows** | ✅ Sẵn sàng | [📥 Tải GoNhanh-Windows-x64.zip](https://github.com/Nguy-n-Th-Huy/gonhanh.org/releases/latest/download/GoNhanh-Windows-x64.zip) | [Xem hướng dẫn](#-cài-đặt-windows) |
 | **Linux** | 🧪 Beta | — | [Xem hướng dẫn](docs/install-linux.md) |
 
 <details>
@@ -50,7 +50,7 @@ brew install --cask gonhanh
 
 **Yêu cầu:** Windows 10/11 (64-bit), .NET 8.0 Runtime
 
-1. Tải [GoNhanh-Windows-x64.zip](https://github.com/khaphanspace/gonhanh.org/releases/latest/download/GoNhanh-Windows-x64.zip)
+1. Tải [GoNhanh-Windows-x64.zip](https://github.com/Nguy-n-Th-Huy/gonhanh.org/releases/latest/download/GoNhanh-Windows-x64.zip)
 2. Giải nén vào thư mục bất kỳ (ví dụ: `C:\Program Files\GoNhanh`)
 3. Chạy `GoNhanh.exe`
 4. App sẽ xuất hiện trong khay hệ thống (system tray)
