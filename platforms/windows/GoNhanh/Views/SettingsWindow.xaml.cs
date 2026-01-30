@@ -40,7 +40,7 @@ public partial class SettingsWindow : Window
         // Typing
         ModernToneCheck.IsChecked = _settings.UseModernTone;
         BracketCheck.IsChecked = false; // TODO: Add to SettingsService if needed
-        AutoRestoreCheck.IsChecked = false; // TODO: Add to SettingsService if needed
+        AutoRestoreCheck.IsChecked = _settings.AutoRestoreEnglish;
         AutoCapCheck.IsChecked = false; // TODO: Add to SettingsService if needed
 
         // Shortcuts
@@ -85,6 +85,7 @@ public partial class SettingsWindow : Window
 
         // Typing
         _settings.UseModernTone = ModernToneCheck.IsChecked == true;
+        _settings.AutoRestoreEnglish = AutoRestoreCheck.IsChecked == true;
 
         // Shortcuts
         _settings.RestoreShortcutEnabled = RestoreEnabledCheck.IsChecked == true;

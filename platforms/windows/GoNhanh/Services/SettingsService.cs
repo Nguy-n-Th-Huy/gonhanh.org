@@ -24,6 +24,7 @@ public class SettingsService
     private const string KeyToggleShortcut = "ToggleShortcut";
     private const string KeyRestoreShortcut = "RestoreShortcut";
     private const string KeyRestoreShortcutEnabled = "RestoreShortcutEnabled";
+    private const string KeyAutoRestoreEnglish = "AutoRestoreEnglish";
 
     #endregion
 
@@ -38,6 +39,7 @@ public class SettingsService
     public KeyboardShortcut ToggleShortcut { get; set; } = KeyboardShortcut.DefaultToggle;
     public KeyboardShortcut RestoreShortcut { get; set; } = KeyboardShortcut.DefaultRestore;
     public bool RestoreShortcutEnabled { get; set; } = true;
+    public bool AutoRestoreEnglish { get; set; } = true;
 
     #endregion
 
@@ -65,6 +67,7 @@ public class SettingsService
             AutoStart = ((int)(key.GetValue(KeyAutoStart, 0) ?? 0)) == 1;
             PerAppModeEnabled = ((int)(key.GetValue(KeyPerAppMode, 0) ?? 0)) == 1;
             RestoreShortcutEnabled = ((int)(key.GetValue(KeyRestoreShortcutEnabled, 1) ?? 1)) == 1;
+            AutoRestoreEnglish = ((int)(key.GetValue(KeyAutoRestoreEnglish, 1) ?? 1)) == 1;
 
             // Load shortcuts (use KeyboardShortcut's own Load method)
             ToggleShortcut = KeyboardShortcut.Load(KeyToggleShortcut, KeyboardShortcut.DefaultToggle);
@@ -93,6 +96,7 @@ public class SettingsService
                 key.SetValue(KeyAutoStart, AutoStart ? 1 : 0, RegistryValueKind.DWord);
                 key.SetValue(KeyPerAppMode, PerAppModeEnabled ? 1 : 0, RegistryValueKind.DWord);
                 key.SetValue(KeyRestoreShortcutEnabled, RestoreShortcutEnabled ? 1 : 0, RegistryValueKind.DWord);
+                key.SetValue(KeyAutoRestoreEnglish, AutoRestoreEnglish ? 1 : 0, RegistryValueKind.DWord);
             }
 
             // Save shortcuts (use KeyboardShortcut's own Save method)
