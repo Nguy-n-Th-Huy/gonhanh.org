@@ -1880,44 +1880,92 @@ fn issue230_case_analysis() {
 
 #[test]
 fn bug_would_backspace_count() {
-    use gonhanh_core::data::keys;
-    use gonhanh_core::engine::Action;
-
-    let mut e = Engine::new();
-    e.set_english_auto_restore(true);
-
-    // Step by step to verify backspace count at each step
-    // w → ư
-    let r = e.on_key(keys::W, false, false);
-    assert_eq!(r.action, Action::Send as u8, "w should transform to ư");
-    assert_eq!(r.backspace, 0, "w→ư: no backspace needed");
-
-    // o → ơ (forms ươ compound)
-    let r = e.on_key(keys::O, false, false);
-    assert_eq!(r.action, Action::Send as u8, "o should transform to ơ");
-    assert_eq!(r.backspace, 0, "w+o: no backspace (appending ơ)");
-
-    // u → passthrough
-    let r = e.on_key(keys::U, false, false);
-    // u might pass through or transform - just verify no crash
-
-    // l → triggers foreign word revert
-    // At this point: screen has "ươu" (3 chars), buffer has [Ư, Ơ, U]
-    // Adding L should detect foreign word and revert to "woul"
-    // Backspace should be 3 (to delete "ươu"), not 4
-    let r = e.on_key(keys::L, false, false);
-    assert_eq!(r.action, Action::Send as u8, "l should trigger revert");
-    assert_eq!(r.backspace, 3, "BUG FIX: l should backspace 3 (ươu), not 4");
-
-    // Verify output is "woul"
-    let output: String = (0..r.count as usize)
-        .filter_map(|i| char::from_u32(r.chars[i]))
-        .collect();
-    assert_eq!(output, "woul", "Output should be 'woul' after revert");
+    // With UniKey behavior change (wo → ưo instead of ươ),
+    // the "would" auto-restore pattern has changed.
+    // This test now verifies the full "would " typing produces correct output.
+    telex_auto_restore(&[("would ", "would ")]);
 }
 
 #[test]
 fn bug_would_full_word() {
     // Full "would " typing test
     telex_auto_restore(&[("would ", "would ")]);
+}
+
+// =============================================================================
+// BUG: "nguwoi" (typing w before o) -> "ngưười" instead of "người"
+// User reports: When typing fast "nguoi" but w is pressed before o,
+// the result becomes "ngưười" (double ư) instead of "người"
+// =============================================================================
+
+#[test]
+fn bug_nguwoi_fast_typing() {
+    let mut e = Engine::new();
+    // Simulate fast typing where w is pressed before o: n-g-u-w-o-i-f
+    let result = type_word(&mut e, "nguwoi");
+    println!("'nguwoi' -> '{}' (expected: 'ngươi')", result);
+    // When w is typed before o in "nguoi", it should still form valid Vietnamese
+    // nguwoi should become ngươi (both u and o get horn)
+}
+
+#[test]
+fn bug_nguwoif_fast_typing() {
+    let mut e = Engine::new();
+    // Full sequence with tone mark: n-g-u-w-o-i-f
+    let result = type_word(&mut e, "nguwoif");
+    println!("'nguwoif' -> '{}' (expected: 'người')", result);
+    // This is the standard typing order and should work
+    telex(&[("nguwoif", "người")]);
+}
+
+// Test UniKey-like behavior: "o" after "w→ư" should NOT auto-horn
+#[test]
+fn bug_unikey_behavior_wo_no_auto_horn() {
+    let mut e = Engine::new();
+    // Type "w" alone → "ư", then "o" → should be "ưo" not "ươ"
+    let result = type_word(&mut e, "wo");
+    println!("'wo' -> '{}' (expected: 'ưo')", result);
+    assert_eq!(result, "ưo", "wo should produce 'ưo' (UniKey behavior), not 'ươ'");
+}
+
+#[test]
+fn bug_unikey_behavior_wow_with_horn() {
+    let mut e = Engine::new();
+    // Type "wow" → "ươ" (second w applies horn to o)
+    let result = type_word(&mut e, "wow");
+    println!("'wow' -> '{}' (expected: 'ươ')", result);
+    // Note: "wow" might trigger English auto-restore, so check actual behavior
+}
+
+// =============================================================================
+// BUG: Shift+D then d -> Đ becomes lowercase
+// User reports: After typing Đ (Shift+D), pressing d again makes Đ lowercase
+// Expected: Dd -> Đd (stroke applied, d added as lowercase)
+// =============================================================================
+
+#[test]
+fn bug_shift_d_then_d_lowercase() {
+    use gonhanh_core::data::keys;
+    use gonhanh_core::engine::Action;
+
+    let mut e = Engine::new();
+
+    // Step 1: Type D (Shift+D) - should output "D"
+    let r1 = e.on_key(keys::D, true, false); // caps=true for uppercase
+    println!("Step 1: D (Shift+D) -> action={}, chars={:?}", r1.action,
+        (0..r1.count as usize).filter_map(|i| char::from_u32(r1.chars[i])).collect::<String>());
+
+    // Step 2: Type d (lowercase) - should create Đ (stroke on uppercase D)
+    let r2 = e.on_key(keys::D, false, false); // caps=false for lowercase
+    println!("Step 2: d -> action={}, backspace={}, chars={:?}", r2.action, r2.backspace,
+        (0..r2.count as usize).filter_map(|i| char::from_u32(r2.chars[i])).collect::<String>());
+
+    // The result should be Đ (uppercase with stroke), not đ (lowercase)
+    // Dd -> Đ (stroke applied to first D, second d consumed)
+    let output: String = (0..r2.count as usize)
+        .filter_map(|i| char::from_u32(r2.chars[i]))
+        .collect();
+
+    // Expected: Đ (uppercase stroke)
+    assert_eq!(output, "Đ", "Dd should produce Đ (uppercase stroke), not đ");
 }

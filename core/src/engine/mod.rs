@@ -3045,6 +3045,19 @@ impl Engine {
         false
     }
 
+    /// Check for ưo compound (u has horn, o does not) - needs normalization to ươ
+    fn has_uo_without_horn_compound(&self) -> bool {
+        if let Some((pos1, pos2)) = self.find_uo_compound_positions() {
+            if let (Some(c1), Some(c2)) = (self.buf.get(pos1), self.buf.get(pos2)) {
+                // Check ư + o pattern (u with horn, o without)
+                let is_u_horn = c1.key == keys::U && c1.tone == tone::HORN;
+                let is_o_plain = c2.key == keys::O && c2.tone == tone::NONE;
+                return is_u_horn && is_o_plain;
+            }
+        }
+        false
+    }
+
     /// Find target position for horn modifier with switching support
     /// Allows selecting vowels that have a different tone (for switching circumflex ↔ horn)
     fn find_horn_target_with_switch(&self, targets: &[u16], new_tone: u8) -> Vec<usize> {
@@ -3624,20 +3637,9 @@ impl Engine {
 
     /// Handle normal letter input
     fn handle_normal_letter(&mut self, key: u16, caps: bool) -> Result {
-        // Special case: "o" after "w→ư" should form "ươ" compound
-        // This only handles the WAsVowel case (typing "w" alone creates ư)
-        // For "uw" pattern, the compound is normalized in try_mark via normalize_uo_compound
-        if key == keys::O && matches!(self.last_transform, Some(Transform::WAsVowel)) {
-            // Add O with horn to form ươ compound
-            let mut c = Char::new(key, caps);
-            c.tone = tone::HORN;
-            self.buf.push(c);
-            self.last_transform = None;
-
-            // Return the ơ character (o with horn)
-            let vowel_char = chars::to_char(keys::O, caps, tone::HORN, 0).unwrap();
-            return Result::send(0, &[vowel_char]);
-        }
+        // Note: Previously had auto-horn for "o" after "w→ư" to form "ươ" compound.
+        // Removed to match UniKey behavior: "nguw" + "o" → "ngưo" (not "ngươ")
+        // User must type "w" again to apply horn to "o": "nguwow" → "ngươ"
 
         // Note: ShortPatternStroke revert is now handled at the beginning of process()
         // before any modifiers are applied, so we don't need to check it here.
@@ -3954,18 +3956,16 @@ impl Engine {
                 }
             }
 
-            // Normalize ưo → ươ immediately when 'o' is typed after 'ư'
-            // This ensures "dduwo" → "đươ" (Telex) and "u7o" → "ươ" (VNI)
-            // Works for both methods since "ưo" alone is not valid Vietnamese
-            if key == keys::O && self.normalize_uo_compound().is_some() {
-                // ươ compound formed - reposition tone if needed (ư→ơ)
-                if let Some((old_pos, _)) = self.reposition_tone_if_needed() {
-                    return self.rebuild_from_after_insert(old_pos);
+            // Note: Previously auto-normalized ưo → ươ when 'o' is typed after 'ư'.
+            // Changed to match UniKey behavior: wo → ưo (not ươ)
+            // BUT: normalize ưo → ươ when a final consonant is added (wong → ương)
+            // This keeps shorthand typing while avoiding issues with English words like "would"
+            if !keys::is_vowel(key) && self.has_uo_without_horn_compound() {
+                // Check if adding this consonant would form valid Vietnamese with ươ
+                if let Some(compound_pos) = self.normalize_uo_compound() {
+                    // Rebuild from the compound position
+                    return self.rebuild_from_after_insert(compound_pos);
                 }
-
-                // No tone to reposition - just output ơ
-                let vowel_char = chars::to_char(keys::O, caps, tone::HORN, 0).unwrap();
-                return Result::send(0, &[vowel_char]);
             }
 
             // Reorder buffer when a vowel completes a diphthong with earlier vowel

@@ -414,9 +414,10 @@ fn vietnamese_complex_words_preserved() {
         ("dduowngf ", "đường "),   // đường (road)
         ("truwowcs ", "trước "),   // trước (before)
         ("giuwowngf ", "giường "), // giường (bed)
-        ("twong ", "tương "),      // tương (mutual) - shorthand telex
+        // Shorthand: wo → ưo, but wong → ương (auto-horn when final added)
+        ("twong ", "tương "),     // tương (mutual) - shorthand works
         ("wng ", "ưng "),          // ưng (agree) - w→ư + ng final
-        ("wong ", "ương "),        // ương (foster) - w→ư, o→ơ horn compound
+        ("wong ", "ương "),        // ương (foster) - shorthand works
         // Words with circumflex (â, ê, ô)
         ("caaps ", "cấp "), // cấp (level)
         ("taanf ", "tần "), // tần (frequency)

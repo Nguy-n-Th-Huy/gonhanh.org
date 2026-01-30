@@ -236,18 +236,20 @@ fn w_initial_comprehensive() {
 /// W + valid Vietnamese vowel patterns
 /// Valid: ưa (W+A), ươ (W+O), ưu (W+U)
 /// Invalid: ưe (W+E), ưi (W+I), ưy (W+Y) → auto-restore as English
+/// Note: wo → ưo (UniKey behavior), but wong → ương (shorthand with final consonant)
 #[test]
 fn w_vowel_produces_valid_vietnamese() {
     telex_auto_restore(&[
         ("wa ", "ưa "), // ưa is valid Vietnamese - keep
         ("we ", "we "), // ưe is NOT valid Vietnamese - restore
         ("wi ", "wi "), // ưi is NOT valid Vietnamese - restore
-        ("wo ", "ươ "), // ươ is valid Vietnamese - keep
+        ("wo ", "ưo "), // UniKey behavior: wo → ưo (need wow for ươ)
     ]);
 }
 
 /// W + valid Vietnamese finals (ng, n, m, c, t, p) produces valid Vietnamese
 /// These are NOT auto-restored because they form valid syllables
+/// Note: wo → ưo, but wong → ương (auto-horn when final consonant is added)
 #[test]
 fn w_final_consonant_produces_valid_vietnamese() {
     telex_auto_restore(&[
@@ -259,8 +261,8 @@ fn w_final_consonant_produces_valid_vietnamese() {
         ("wc ", "ưc "),    // ưc is valid Vietnamese
         ("wt ", "ưt "),    // ưt is valid Vietnamese
         ("wp ", "ưp "),    // ưp is valid Vietnamese
-        // ươ + finals (w→ư, o→ơ)
-        ("wong ", "ương "), // ương
+        // ươ + finals: wo → ưo, but adding final triggers auto-horn to ươ
+        ("wong ", "ương "), // ương (shorthand: auto-horn when final added)
         ("won ", "ươn "),   // ươn
         ("wom ", "ươm "),   // ươm
         ("woc ", "ươc "),   // ươc

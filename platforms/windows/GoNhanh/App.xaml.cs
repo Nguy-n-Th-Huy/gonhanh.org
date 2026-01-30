@@ -102,11 +102,6 @@ public partial class App : System.Windows.Application
 
         var result = RustBridge.ProcessKey(e.VirtualKeyCode, e.Shift, e.CapsLock);
 
-        // Debug log
-        var logPath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "gonhanh-debug.log");
-        var processName = AppDetector.GetForegroundProcessName() ?? "unknown";
-        System.IO.File.AppendAllText(logPath, $"[{DateTime.Now:HH:mm:ss.fff}] [{processName}] VK={e.VirtualKeyCode} -> Action={result.Action}, BS={result.Backspace}, Count={result.Count}, Text='{result.GetText()}', Method={method}\n");
-
         if (result.Action == ImeAction.Send && result.Count > 0)
         {
             e.Handled = true;

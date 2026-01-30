@@ -133,8 +133,10 @@ fn horn_order_diphthong() {
         ("oiw ", "ơi "), // w after i - this was the bug we fixed!
         // ưa pattern (standard order)
         ("uwa ", "ưa "),
-        // ươ pattern (standard order)
-        ("uwo ", "ươ "),
+        // ươ pattern: UniKey behavior - need explicit w for ơ
+        // uwo → ưo (o doesn't auto-horn), need uwow for ươ
+        ("uwo ", "ưo "),   // UniKey behavior: no auto-horn
+        ("uwow ", "ươ "),  // explicit w for ơ
     ]);
 }
 

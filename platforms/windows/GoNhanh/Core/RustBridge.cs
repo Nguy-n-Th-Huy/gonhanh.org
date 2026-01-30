@@ -130,8 +130,10 @@ public static class RustBridge
         // Convert Windows VK code to macOS keycode for Rust engine
         ushort macKeyCode = KeyCodes.ToMacKeyCode(keycode);
 
-        // Rust ime_key expects: (key, caps, ctrl) - we pass shift as ctrl=false
-        IntPtr ptr = ime_key(macKeyCode, capslock, false);
+        // Rust ime_key expects: (key, caps, ctrl)
+        // caps = true means uppercase letter (either Shift or CapsLock)
+        bool caps = shift || capslock;
+        IntPtr ptr = ime_key(macKeyCode, caps, false);
         if (ptr == IntPtr.Zero)
         {
             return ImeResult.Empty;
